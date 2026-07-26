@@ -6,16 +6,25 @@ import (
 	"MeshNet/internal/domain"
 )
 
-type Repository struct {
-	data []*domain.Message
+type Store struct {
+	objects map[string]*domain.Object
+	payloads map[string]*domain.Payload
 }
 
-func New() *Repository {
-	return &Repository{}
+func New() *Store {
+	return &Store{
+		objects: make(map[string]*domain.Object),
+		payloads: make(map[string]*domain.Payload),
+	}
 }
 
-func (r *Repository) Save(ctx context.Context, msg *domain.Message) error {
-	r.data = append(r.data, msg)
+func (s *Store) SaveObject(ctx context.Context, obj *domain.Object) error {
+	s.objects[obj.ID] = obj
+	return nil
+}
+
+func (s *Store) SavePayload(ctx context.Context, payload *domain.Payload) error {
+	s.payloads[payload.ObjectID] = payload
 	return nil
 }
 

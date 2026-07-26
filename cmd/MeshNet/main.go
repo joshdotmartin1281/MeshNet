@@ -10,14 +10,19 @@ import (
 
 func main() {
 	repo := memory.New()
-
 	service := app.New(repo)
 
-	msg := &domain.Message{
+	obj := &domain.Object{
 		Source: "cli",
-		Data:   []byte("hello world"),
 	}
 
-	service.Process(context.Background(), msg)
+	payload := &domain.Payload{
+		Data: []byte("hello world"),
+	}
+
+	err := service.Process(context.Background(), payload, obj)
+	if err != nil {
+		panic(err)
+	}
 }
 

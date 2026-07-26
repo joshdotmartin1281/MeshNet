@@ -2,7 +2,9 @@ package domain
 
 import "context"
 
-type Repository interface {
-	Save(context.Context, *Message) error
+type ObjectRepository interface {
+    SaveObject(context.Context, *Object) error
+
+	SavePayload(context.Context, *Payload) error
 }
 
