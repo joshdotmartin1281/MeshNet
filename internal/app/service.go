@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"MeshNet/internal/domain"
+	"MeshNet/internal/processors/hash"
 )
 
 type Service struct {
@@ -18,8 +19,7 @@ func New(repo domain.ObjectRepository) *Service {
 }
 
 func (s *Service) Process(ctx context.Context, payload *domain.Payload, obj *domain.Object) error {
-	// Calculate hash
-
+	obj.Hash = hash.SHA256(payload.Data)
 	obj.Size = int64(len(payload.Data))
 	obj.CreatedAt = time.Now()
 

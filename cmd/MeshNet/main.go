@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"MeshNet/internal/app"
 	"MeshNet/internal/domain"
@@ -13,6 +14,7 @@ func main() {
 	service := app.New(repo)
 
 	obj := &domain.Object{
+		ID:     "obj-1",
 		Source: "cli",
 	}
 
@@ -20,9 +22,16 @@ func main() {
 		Data: []byte("hello world"),
 	}
 
-	err := service.Process(context.Background(), payload, obj)
-	if err != nil {
+	if err := service.Process(context.Background(), payload, obj); err != nil {
 		panic(err)
 	}
+
+	fmt.Printf("ID:         %s\n", obj.ID)
+	fmt.Printf("Hash:       %s\n", obj.Hash)
+	fmt.Printf("Size:       %d\n", obj.Size)
+	fmt.Printf("Source:     %s\n", obj.Source)
+	fmt.Printf("Created At: %s\n", obj.CreatedAt.Format("2006-01-02 15:04:05"))
+
+	fmt.Printf("\nPayload ObjectID: %s\n", payload.ObjectID)
 }
 
