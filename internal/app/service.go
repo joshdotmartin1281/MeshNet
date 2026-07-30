@@ -19,9 +19,10 @@ func New(repo domain.ObjectRepository) *Service {
 }
 
 func (s *Service) Process(ctx context.Context, payload *domain.Payload, obj *domain.Object) error {
+	obj.ID = domain.NewID().String()
 	obj.Hash = hash.SHA256(payload.Data)
 	obj.Size = int64(len(payload.Data))
-	obj.CreatedAt = time.Now()
+	obj.CreatedAt = time.Now().UTC()
 
 	payload.ObjectID = obj.ID
 
