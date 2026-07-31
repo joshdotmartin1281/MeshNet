@@ -18,18 +18,28 @@ func New(repo domain.ObjectRepository) *Service {
 	}
 }
 
-func (s *Service) Process(ctx context.Context, payload *domain.Payload, obj *domain.Object) error {
-	obj.ID = domain.NewID().String()
-	obj.Hash = hash.SHA256(payload.Data)
-	obj.Size = int64(len(payload.Data))
-	obj.CreatedAt = time.Now().UTC()
+func (s *Service) Process(ctx context.Context, source domain.Source, data []byte) (*domain.Object, error) {
+    obj := &domain.Object{
+        ID:        domain.NewID().String(),
+        Source:    source,
+        Hash:      hash.SHA256(data),
+        Size:      int64(len(data)),
+        CreatedAt: time.Now().UTC(),
+    }
 
-	payload.ObjectID = obj.ID
+    payload := &domain.Payload{
+        ObjectID: obj.ID,
+        Data:     data,
+    }
 
-	if err := s.repo.SaveObject(ctx, obj); err != nil {
-		return err
-	}
+    if err := s.repo.SaveObject(ctx, obj); err != nil {
+        return nil, err
+    }
 
-	return s.repo.SavePayload(ctx, payload)
+    if err := s.repo.SavePayload(ctx, payload); err != nil {
+        return nil, err
+    }
+
+    return obj, nil
 }
 

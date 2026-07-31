@@ -6,7 +6,7 @@ type Object struct {
 	ID         string
 	Hash       string
 	Size       int64
-	Source     string
+	Source     Source
 	CreatedAt  time.Time
 	Transforms []Transform
 }
