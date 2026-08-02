@@ -22,10 +22,3 @@ type Transform struct {
 	Params  map[string]string
 }
 
-type ObjectResponse struct {
-	ID        string
-	Hash      string
-	Size      int64
-	CreatedAt time.Time
-}
-

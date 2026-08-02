@@ -1,37 +1,20 @@
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "strings"
+	"log"
+	"os"
 
-    "MeshNet/internal/app"
-    "MeshNet/internal/domain"
-    "MeshNet/internal/storage/memory"
+	"MeshNet/internal/app"
+	"MeshNet/internal/transport/cli"
+	"MeshNet/internal/storage/memory"
 )
 
 func main() {
-    if len(os.Args) < 2 {
-        log.Fatalf("usage: meshctl <text>")
-    }
+	repo := memory.New()
+	service := app.New(repo)
 
-    data := []byte(strings.Join(os.Args[1:], " "))
-
-    repo := memory.New()
-    service := app.New(repo)
-
-    obj, err := service.Process(
-        context.Background(),
-        domain.SourceCLI,
-        data,
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    fmt.Printf("ID: %s\n", obj.ID)
-    fmt.Printf("Hash: %s\n", obj.Hash)
+	if err := cli.Run(service, os.Args[1:]); err != nil {
+		log.Fatal(err)
+	}
 }
 
