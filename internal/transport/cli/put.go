@@ -1,4 +1,3 @@
-
 package cli
 
 import (
@@ -45,7 +44,7 @@ func Put(s *app.Service, args []string) error {
 		return errors.New("no input data")
 	}
 
-	obj, err := s.Process(context.Background(), domain.SourceCLI, data)
+	obj, err := s.Put(context.Background(), domain.SourceCLI, data)
 	if err != nil {
 		return err
 	}

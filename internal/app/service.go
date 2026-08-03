@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"MeshNet/internal/domain"
@@ -18,7 +19,11 @@ func New(repo domain.ObjectRepository) *Service {
 	}
 }
 
-func (s *Service) Process(ctx context.Context, source domain.Source, data []byte) (*domain.Object, error) {
+func (s *Service) Put(ctx context.Context, source domain.Source, data []byte) (*domain.Object, error) {
+	if len(data) == 0 {
+		return nil, errors.New("empty payload")
+	}
+
 	obj := &domain.Object{
 		ID:        domain.NewID().String(),
 		Source:    source,
@@ -37,5 +42,21 @@ func (s *Service) Process(ctx context.Context, source domain.Source, data []byte
 	}
 
 	return obj, nil
+}
+
+func (s *Service) Get(ctx context.Context, id string) (*domain.Object, *domain.Payload, error) {
+	return s.repo.Get(ctx, id)
+}
+
+func (s *Service) GetByHash(ctx context.Context, hash string) (*domain.Object, error) {
+	return s.repo.GetByHash(ctx, hash)
+}
+
+func (s *Service) List(ctx context.Context) ([]*domain.Object, error) {
+	return s.repo.List(ctx)
+}
+
+func (s *Service) Delete(ctx context.Context, id string) error {
+	return s.repo.Delete(ctx, id)
 }
 

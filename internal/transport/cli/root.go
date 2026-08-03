@@ -12,8 +12,8 @@ func Run(s *app.Service, args []string) error {
     switch args[0] {
     case "put":
         return Put(s, args[1:])
-    //case "get":
-        //return Get(s, args[1:])
+    case "get":
+        return Get(s, args[1:])
     //case "list":
         //return List(s, args[1:])
     //case "delete":
