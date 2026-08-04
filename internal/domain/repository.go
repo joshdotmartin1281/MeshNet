@@ -7,7 +7,7 @@ type ObjectRepository interface {
 
 	Get(ctx context.Context, id string) (*Object, *Payload, error)
 
-	GetByHash(ctx context.Context, hash string) (*Object, error)
+	GetByHash(ctx context.Context, hash string) (*Object, *Payload, error)
 
 	List(ctx context.Context) ([]*Object, error)
 

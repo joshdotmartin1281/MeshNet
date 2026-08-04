@@ -48,7 +48,7 @@ func (s *Service) Get(ctx context.Context, id string) (*domain.Object, *domain.P
 	return s.repo.Get(ctx, id)
 }
 
-func (s *Service) GetByHash(ctx context.Context, hash string) (*domain.Object, error) {
+func (s *Service) GetByHash(ctx context.Context, hash string) (*domain.Object, *domain.Payload, error) {
 	return s.repo.GetByHash(ctx, hash)
 }
 

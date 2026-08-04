@@ -45,13 +45,23 @@ func (s *Store) Get(ctx context.Context, id string) (*domain.Object, *domain.Pay
 	return obj, payload, nil
 }
 
-func (s *Store) GetByHash(ctx context.Context, hash string) (*domain.Object, error) {
+func (s *Store) GetByHash(ctx context.Context, hash string) (*domain.Object, *domain.Payload, error) {
 	id, ok := s.hashes[hash]
 	if !ok {
-		return nil, ErrNotFound
+		return nil, nil, ErrNotFound
 	}
 
-	return s.objects[id], nil
+	obj, ok := s.objects[id]
+	if !ok {
+		return nil, nil, ErrNotFound
+	}
+
+	payload, ok := s.payloads[id]
+	if !ok {
+		return nil, nil, ErrNotFound
+	}
+
+	return obj, payload, nil
 }
 
 func (s *Store) List(ctx context.Context) ([]*domain.Object, error) {

@@ -14,10 +14,12 @@ func Run(s *app.Service, args []string) error {
         return Put(s, args[1:])
     case "get":
         return Get(s, args[1:])
-    //case "list":
-        //return List(s, args[1:])
-    //case "delete":
-        //return Delete(s, args[1:])
+    case "list":
+        return List(s, args[1:])
+    case "delete":
+        return Delete(s, args[1:])
+	case "get-by-hash":
+		return GetByHash(s, args[1:])
     default:
         return ErrUnknownCommand
     }
