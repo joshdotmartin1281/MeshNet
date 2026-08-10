@@ -1,6 +1,14 @@
 package domain
 
-import "context"
+import (
+	"errors"
+	"context"
+)
+
+var (
+	ErrNotFound = errors.New("object not found")
+	ErrDuplicate = errors.New("object already exists")
+)
 
 type ObjectRepository interface {
 	Save(ctx context.Context, obj *Object, payload *Payload) error

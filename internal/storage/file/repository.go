@@ -10,11 +10,6 @@ import (
 	"MeshNet/internal/domain"
 )
 
-var (
-	ErrNotFound  = errors.New("object not found")
-	ErrDuplicate = errors.New("object already exists")
-)
-
 type record struct {
 	Object  *domain.Object  `json:"object"`
 	Payload *domain.Payload `json:"payload"`
@@ -81,11 +76,15 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 		return err
 	}
 
-	_, err := os.Stat(s.hashPath(obj.Hash))
-	switch {
-	case err == nil:
-		return ErrDuplicate
-	case !errors.Is(err, os.ErrNotExist):
+	if _, err := os.Stat(s.objectPath(obj.ID)); err == nil {
+		return domain.ErrDuplicate
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	if _, err := os.Stat(s.hashPath(obj.Hash)); err == nil {
+		return domain.ErrDuplicate
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
@@ -127,7 +126,7 @@ func (s *Store) Get(ctx context.Context, id string) (*domain.Object, *domain.Pay
 	data, err := os.ReadFile(s.objectPath(id))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil, ErrNotFound
+			return nil, nil, domain.ErrNotFound
 		}
 
 		return nil, nil, err
@@ -150,7 +149,7 @@ func (s *Store) GetByHash(ctx context.Context, hash string) (*domain.Object, *do
 	id, err := os.ReadFile(s.hashPath(hash))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil, ErrNotFound
+			return nil, nil, domain.ErrNotFound
 		}
 
 		return nil, nil, err
@@ -160,6 +159,10 @@ func (s *Store) GetByHash(ctx context.Context, hash string) (*domain.Object, *do
 }
 
 func (s *Store) List(ctx context.Context) ([]*domain.Object, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	dir := filepath.Join(s.root, "objects")
 
 	entries, err := os.ReadDir(dir)
@@ -178,7 +181,9 @@ func (s *Store) List(ctx context.Context) ([]*domain.Object, error) {
 			continue
 		}
 
-		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		data, err := os.ReadFile(
+			filepath.Join(dir, entry.Name()),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -209,7 +214,7 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 
 	if err := os.Remove(s.objectPath(id)); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return ErrNotFound
+			return domain.ErrNotFound
 		}
 
 		return err
@@ -230,3 +235,4 @@ func (s *Store) objectPath(id string) string {
 func (s *Store) hashPath(hash string) string {
 	return filepath.Join(s.root, "hashes", hash)
 }
+

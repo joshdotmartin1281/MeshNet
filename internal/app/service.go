@@ -20,6 +20,10 @@ func New(repo domain.ObjectRepository) *Service {
 }
 
 func (s *Service) Put(ctx context.Context, source domain.Source, data []byte) (*domain.Object, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	if len(data) == 0 {
 		return nil, errors.New("empty payload")
 	}

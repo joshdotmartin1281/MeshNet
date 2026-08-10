@@ -2,14 +2,8 @@ package memory
 
 import (
 	"context"
-	"errors"
 
 	"MeshNet/internal/domain"
-)
-
-var (
-	ErrNotFound  = errors.New("object not found")
-	ErrDuplicate = errors.New("object already exists")
 )
 
 type Store struct {
@@ -31,8 +25,12 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 		return err
 	}
 
+	if _, exists := s.objects[obj.ID]; exists {
+		return domain.ErrDuplicate
+	}
+
 	if _, exists := s.hashes[obj.Hash]; exists {
-		return ErrDuplicate
+		return domain.ErrDuplicate
 	}
 
 	s.objects[obj.ID] = obj
@@ -49,12 +47,12 @@ func (s *Store) Get(ctx context.Context, id string) (*domain.Object, *domain.Pay
 
 	obj, ok := s.objects[id]
 	if !ok {
-		return nil, nil, ErrNotFound
+		return nil, nil, domain.ErrNotFound
 	}
 
 	payload, ok := s.payloads[id]
 	if !ok {
-		return nil, nil, ErrNotFound
+		return nil, nil, domain.ErrNotFound
 	}
 
 	return obj, payload, nil
@@ -67,7 +65,7 @@ func (s *Store) GetByHash(ctx context.Context, hash string) (*domain.Object, *do
 
 	id, ok := s.hashes[hash]
 	if !ok {
-		return nil, nil, ErrNotFound
+		return nil, nil, domain.ErrNotFound
 	}
 
 	return s.Get(ctx, id)
@@ -98,7 +96,7 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 
 	obj, ok := s.objects[id]
 	if !ok {
-		return ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	delete(s.objects, id)
