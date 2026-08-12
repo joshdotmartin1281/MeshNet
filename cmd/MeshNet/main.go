@@ -7,18 +7,18 @@ import (
 
 	"MeshNet/internal/app"
 	"MeshNet/internal/domain"
-	"MeshNet/internal/storage/file"
+	"MeshNet/internal/hash"
+	"MeshNet/internal/storage/memory"
 )
 
 func main() {
 	ctx := context.Background()
 
-	repo, err := file.New("./meshnet-data")
-	if err != nil {
-		log.Fatal(err)
-	}
+	repo := memory.New()
 
-	service := app.New(repo)
+	hasher := hash.NewSHA256()
+
+	service := app.New(repo, hasher)
 
 	data := []byte("hello MeshNet")
 

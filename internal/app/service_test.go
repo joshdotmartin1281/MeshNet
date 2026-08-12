@@ -9,6 +9,26 @@ import (
 	"MeshNet/internal/domain"
 )
 
+type fakeHasher struct {
+	hashFunc func([]byte) string
+}
+
+func (f *fakeHasher) Hash(data []byte) string {
+	if f.hashFunc != nil {
+		return f.hashFunc(data)
+	}
+
+	return "test-hash"
+}
+
+func (f *fakeHasher) Name() string {
+	return "test"
+}
+
+func (f *fakeHasher) Version() string {
+	return "1"
+}
+
 type fakeRepository struct {
 	saveFunc      func(context.Context, *domain.Object, *domain.Payload) error
 	getFunc       func(context.Context, string) (*domain.Object, *domain.Payload, error)
@@ -33,7 +53,6 @@ func (f *fakeRepository) Save(
 	}
 
 	return nil
-
 }
 
 func (f *fakeRepository) Get(
@@ -45,7 +64,6 @@ func (f *fakeRepository) Get(
 	}
 
 	return nil, nil, nil
-
 }
 
 func (f *fakeRepository) GetByHash(
@@ -57,7 +75,6 @@ func (f *fakeRepository) GetByHash(
 	}
 
 	return nil, nil, nil
-
 }
 
 func (f *fakeRepository) List(
@@ -68,7 +85,6 @@ func (f *fakeRepository) List(
 	}
 
 	return nil, nil
-
 }
 
 func (f *fakeRepository) Delete(
@@ -80,12 +96,11 @@ func (f *fakeRepository) Delete(
 	}
 
 	return nil
-
 }
 
 func TestServicePut(t *testing.T) {
 	repo := &fakeRepository{}
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	data := []byte("hello world")
 
@@ -153,39 +168,48 @@ func TestServicePut(t *testing.T) {
 			data,
 		)
 	}
-
 }
 
 func TestServicePutHash(t *testing.T) {
 	repo := &fakeRepository{}
-	service := New(repo)
 
-	data := []byte("hello world")
+	hasher := &fakeHasher{
+		hashFunc: func(data []byte) string {
+			if !bytes.Equal(data, []byte("hello world")) {
+				t.Errorf(
+					"Hasher received %q, want %q",
+					data,
+					"hello world",
+				)
+			}
+
+			return "expected-hash"
+		},
+	}
+
+	service := New(repo, hasher)
 
 	obj, err := service.Put(
 		context.Background(),
 		domain.SourceCLI,
-		data,
+		[]byte("hello world"),
 	)
 	if err != nil {
 		t.Fatalf("Put() error = %v", err)
 	}
 
-	const wantHash = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
-
-	if obj.Hash != wantHash {
+	if obj.Hash != "expected-hash" {
 		t.Errorf(
 			"Hash = %q, want %q",
 			obj.Hash,
-			wantHash,
+			"expected-hash",
 		)
 	}
-
 }
 
 func TestServicePutEmptyData(t *testing.T) {
 	repo := &fakeRepository{}
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	obj, err := service.Put(
 		context.Background(),
@@ -215,12 +239,11 @@ func TestServicePutEmptyData(t *testing.T) {
 	if repo.savedObject != nil {
 		t.Error("repository was called for empty payload")
 	}
-
 }
 
 func TestServicePutCancelledContext(t *testing.T) {
 	repo := &fakeRepository{}
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -248,7 +271,6 @@ func TestServicePutCancelledContext(t *testing.T) {
 	if repo.savedObject != nil {
 		t.Error("repository was called with cancelled context")
 	}
-
 }
 
 func TestServicePutRepositoryError(t *testing.T) {
@@ -264,7 +286,7 @@ func TestServicePutRepositoryError(t *testing.T) {
 		},
 	}
 
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	obj, err := service.Put(
 		context.Background(),
@@ -286,7 +308,6 @@ func TestServicePutRepositoryError(t *testing.T) {
 			obj,
 		)
 	}
-
 }
 
 func TestServiceGet(t *testing.T) {
@@ -316,7 +337,7 @@ func TestServiceGet(t *testing.T) {
 		},
 	}
 
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	obj, payload, err := service.Get(
 		context.Background(),
@@ -333,7 +354,6 @@ func TestServiceGet(t *testing.T) {
 	if payload != expectedPayload {
 		t.Error("Get() returned unexpected payload")
 	}
-
 }
 
 func TestServiceGetByHash(t *testing.T) {
@@ -363,7 +383,7 @@ func TestServiceGetByHash(t *testing.T) {
 		},
 	}
 
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	obj, payload, err := service.GetByHash(
 		context.Background(),
@@ -380,7 +400,6 @@ func TestServiceGetByHash(t *testing.T) {
 	if payload != expectedPayload {
 		t.Error("GetByHash() returned unexpected payload")
 	}
-
 }
 
 func TestServiceList(t *testing.T) {
@@ -401,7 +420,7 @@ func TestServiceList(t *testing.T) {
 		},
 	}
 
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	objects, err := service.List(context.Background())
 	if err != nil {
@@ -426,7 +445,6 @@ func TestServiceList(t *testing.T) {
 			)
 		}
 	}
-
 }
 
 func TestServiceDelete(t *testing.T) {
@@ -442,7 +460,7 @@ func TestServiceDelete(t *testing.T) {
 		},
 	}
 
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	err := service.Delete(
 		context.Background(),
@@ -458,7 +476,6 @@ func TestServiceDelete(t *testing.T) {
 			deletedID,
 		)
 	}
-
 }
 
 func TestServiceErrorPropagation(t *testing.T) {
@@ -490,7 +507,7 @@ func TestServiceErrorPropagation(t *testing.T) {
 		},
 	}
 
-	service := New(repo)
+	service := New(repo, &fakeHasher{})
 
 	t.Run("Get", func(t *testing.T) {
 		_, _, err := service.Get(
@@ -548,5 +565,5 @@ func TestServiceErrorPropagation(t *testing.T) {
 			)
 		}
 	})
-
 }
+

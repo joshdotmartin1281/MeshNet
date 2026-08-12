@@ -16,9 +16,3 @@ type Payload struct {
 	Data     []byte
 }
 
-type Transform struct {
-	Name    string
-	Version string
-	Params  map[string]string
-}
-

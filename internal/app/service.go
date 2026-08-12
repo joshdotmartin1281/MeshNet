@@ -6,16 +6,20 @@ import (
 	"time"
 
 	"MeshNet/internal/domain"
-	"MeshNet/internal/processors/hash"
 )
 
 type Service struct {
-	repo domain.ObjectRepository
+	repo   domain.ObjectRepository
+	hasher domain.Hasher
 }
 
-func New(repo domain.ObjectRepository) *Service {
+func New(
+	repo domain.ObjectRepository,
+	hasher domain.Hasher,
+) *Service {
 	return &Service{
-		repo: repo,
+		repo:   repo,
+		hasher: hasher,
 	}
 }
 
@@ -31,10 +35,11 @@ func (s *Service) Put(ctx context.Context, source domain.Source, data []byte) (*
 	obj := &domain.Object{
 		ID:        domain.NewID().String(),
 		Source:    source,
-		Hash:      hash.SHA256(data),
 		Size:      int64(len(data)),
 		CreatedAt: time.Now().UTC(),
 	}
+
+	obj.Hash = s.hasher.Hash(data)
 
 	payload := &domain.Payload{
 		ObjectID: obj.ID,
