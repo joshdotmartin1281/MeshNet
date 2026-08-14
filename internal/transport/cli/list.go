@@ -7,10 +7,11 @@ import (
 	"io"
 	"os"
 
+	"MeshNet/internal/api"
 	"MeshNet/internal/app"
 )
 
-func List(s *app.Service, args []string) error {
+func List(port app.Port, args []string) error {
 	fs := flag.NewFlagSet("list", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
@@ -18,12 +19,15 @@ func List(s *app.Service, args []string) error {
 		return err
 	}
 
-	objects, err := s.List(context.Background())
+	resp, err := port.List(
+		context.Background(),
+		api.ListRequest{},
+	)
 	if err != nil {
 		return err
 	}
 
-	for _, obj := range objects {
+	for _, obj := range resp.Objects {
 		fmt.Fprintf(os.Stdout, "%s\t%s\t%d\n",
 			obj.ID,
 			obj.Hash,

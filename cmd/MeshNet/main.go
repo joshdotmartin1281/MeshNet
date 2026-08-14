@@ -1,46 +1,57 @@
 package main
 
 import (
-	"context"
+	"bufio"
 	"fmt"
-	"log"
+	"os"
+	"strings"
 
 	"MeshNet/internal/app"
-	"MeshNet/internal/domain"
 	"MeshNet/internal/hash"
-	"MeshNet/internal/storage/memory"
+	"MeshNet/internal/storage/file"
+	"MeshNet/internal/transport/cli"
 )
 
 func main() {
-	ctx := context.Background()
-
-	repo := memory.New()
-
+	repo, err := file.New("./mesh-net")
+	if err != nil {
+		return
+	}
 	hasher := hash.NewSHA256()
 
 	service := app.New(repo, hasher)
 
-	data := []byte("hello MeshNet")
+	fmt.Println("MeshNet")
+	fmt.Println("Type a command, or 'exit' to quit.")
 
-	created, err := service.Put(ctx, domain.SourceCLI, data)
-	if err != nil {
-		log.Fatal(err)
+	scanner := bufio.NewScanner(os.Stdin)
+
+	for {
+		fmt.Print("> ")
+
+		if !scanner.Scan() {
+			break
+		}
+
+		line := strings.TrimSpace(scanner.Text())
+
+		if line == "" {
+			continue
+		}
+
+		if line == "exit" || line == "quit" {
+			break
+		}
+
+		args := strings.Fields(line)
+
+		if err := cli.Run(service, args); err != nil {
+			fmt.Println("error:", err)
+		}
 	}
 
-	fmt.Println("created:")
-	fmt.Println("id:", created.ID)
-	fmt.Println("hash:", created.Hash)
-	fmt.Println("source:", created.Source)
-	fmt.Println("size:", created.Size)
-
-	found, payload, err := service.Get(ctx, created.ID)
-	if err != nil {
-		log.Fatal(err)
+	if err := scanner.Err(); err != nil {
+		fmt.Println("error:", err)
 	}
-
-	fmt.Println("\nretrieved:")
-	fmt.Println("id:", found.ID)
-	fmt.Println("hash:", found.Hash)
-	fmt.Println("payload:", string(payload.Data))
 }
 

@@ -6,10 +6,11 @@ import (
 	"flag"
 	"io"
 
+	"MeshNet/internal/api"
 	"MeshNet/internal/app"
 )
 
-func Delete(s *app.Service, args []string) error {
+func Delete(port app.Port, args []string) error {
 	fs := flag.NewFlagSet("delete", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
@@ -21,8 +22,13 @@ func Delete(s *app.Service, args []string) error {
 		return errors.New("usage: delete <id>")
 	}
 
-	id := fs.Arg(0)
+	_, err := port.Delete(
+		context.Background(),
+		api.DeleteRequest{
+			ID: fs.Arg(0),
+		},
+	)
 
-	return s.Delete(context.Background(), id)
+	return err
 }
 
