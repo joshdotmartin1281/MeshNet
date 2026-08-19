@@ -31,4 +31,3 @@ func (Uppercase) Process(data []byte, transform domain.Transform) ([]byte, error
 
 	return []byte(strings.ToUpper(string(data))), nil
 }
-

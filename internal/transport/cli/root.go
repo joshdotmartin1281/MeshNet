@@ -22,4 +22,3 @@ func Run(port app.Port, args []string) error {
 		return ErrUnknownCommand
 	}
 }
-

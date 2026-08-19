@@ -15,4 +15,3 @@ type Payload struct {
 	ObjectID string
 	Data     []byte
 }
-

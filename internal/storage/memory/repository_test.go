@@ -13,4 +13,3 @@ func TestNew(t *testing.T) {
 		t.Fatal("New() returned nil")
 	}
 }
-

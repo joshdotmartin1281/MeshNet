@@ -9,4 +9,3 @@ type ID struct {
 func NewID() ID {
 	return ID{UUID: uuid.New()}
 }
-

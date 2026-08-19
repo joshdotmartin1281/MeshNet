@@ -13,4 +13,3 @@ type Port interface {
 	List(context.Context, api.ListRequest) (api.ListResponse, error)
 	Delete(context.Context, api.DeleteRequest) (api.DeleteResponse, error)
 }
-

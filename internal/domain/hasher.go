@@ -5,4 +5,3 @@ type Hasher interface {
 	Name() string
 	Version() string
 }
-

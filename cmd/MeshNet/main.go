@@ -8,6 +8,7 @@ import (
 
 	"MeshNet/internal/app"
 	"MeshNet/internal/hash"
+	"MeshNet/internal/processors/text"
 	"MeshNet/internal/storage/file"
 	"MeshNet/internal/transport/cli"
 )
@@ -15,11 +16,18 @@ import (
 func main() {
 	repo, err := file.New("./mesh-net")
 	if err != nil {
+		fmt.Println("error:", err)
 		return
 	}
+
 	hasher := hash.NewSHA256()
 
-	service := app.New(repo, hasher)
+	processor := app.NewProcessor(
+		text.NewUppercase(),
+		text.NewLowercase(),
+	)
+
+	service := app.New(repo, hasher, processor)
 
 	fmt.Println("MeshNet")
 	fmt.Println("Type a command, or 'exit' to quit.")
@@ -54,4 +62,3 @@ func main() {
 		fmt.Println("error:", err)
 	}
 }
-

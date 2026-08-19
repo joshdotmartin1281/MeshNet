@@ -235,4 +235,3 @@ func (s *Store) objectPath(id string) string {
 func (s *Store) hashPath(hash string) string {
 	return filepath.Join(s.root, "hashes", hash)
 }
-

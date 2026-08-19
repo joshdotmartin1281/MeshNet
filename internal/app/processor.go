@@ -50,4 +50,3 @@ func (p *Processor) Process(data []byte, transforms []domain.Transform) ([]byte,
 
 	return result, nil
 }
-

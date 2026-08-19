@@ -10,14 +10,16 @@ import (
 )
 
 type Service struct {
-	repo   domain.ObjectRepository
-	hasher domain.Hasher
+	repo      domain.ObjectRepository
+	hasher    domain.Hasher
+	processor *Processor
 }
 
-func New(repo domain.ObjectRepository, hasher domain.Hasher) *Service {
+func New(repo domain.ObjectRepository, hasher domain.Hasher, processor *Processor) *Service {
 	return &Service{
-		repo:   repo,
-		hasher: hasher,
+		repo:      repo,
+		hasher:    hasher,
+		processor: processor,
 	}
 }
 
@@ -30,18 +32,34 @@ func (s *Service) Put(ctx context.Context, req api.PutRequest) (api.PutResponse,
 		return api.PutResponse{}, errors.New("empty payload")
 	}
 
-	obj := &domain.Object{
-		ID:        domain.NewID().String(),
-		Source:    req.Source,
-		Size:      int64(len(req.Data)),
-		CreatedAt: time.Now().UTC(),
+	data := req.Data
+
+	if len(req.Transforms) > 0 {
+		var err error
+
+		data, err = s.processor.Process(data, req.Transforms)
+		if err != nil {
+			return api.PutResponse{}, err
+		}
 	}
 
-	obj.Hash = s.hasher.Hash(req.Data)
+	if len(data) == 0 {
+		return api.PutResponse{}, errors.New("empty payload after transforms")
+	}
+
+	obj := &domain.Object{
+		ID:         domain.NewID().String(),
+		Source:     req.Source,
+		Size:       int64(len(data)),
+		CreatedAt:  time.Now().UTC(),
+		Transforms: req.Transforms,
+	}
+
+	obj.Hash = s.hasher.Hash(data)
 
 	payload := &domain.Payload{
 		ObjectID: obj.ID,
-		Data:     req.Data,
+		Data:     data,
 	}
 
 	if err := s.repo.Save(ctx, obj, payload); err != nil {
@@ -59,6 +77,13 @@ func (s *Service) Get(ctx context.Context, req api.GetRequest) (api.GetResponse,
 		return api.GetResponse{}, err
 	}
 
+	data, err := s.processor.Process(payload.Data, req.Transforms)
+	if err != nil {
+		return api.GetResponse{}, err
+	}
+
+	payload.Data = data
+
 	return api.GetResponse{
 		Object:  obj,
 		Payload: payload,
@@ -71,6 +96,12 @@ func (s *Service) GetByHash(ctx context.Context, req api.GetByHashRequest) (api.
 		return api.GetResponse{}, err
 	}
 
+	data, err := s.processor.Process(payload.Data, req.Transforms)
+	if err != nil {
+		return api.GetResponse{}, err
+	}
+
+	payload.Data = data
 	return api.GetResponse{
 		Object:  obj,
 		Payload: payload,
@@ -95,4 +126,3 @@ func (s *Service) Delete(ctx context.Context, req api.DeleteRequest) (api.Delete
 
 	return api.DeleteResponse{}, nil
 }
-

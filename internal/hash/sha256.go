@@ -24,4 +24,3 @@ func (SHA256) Name() string {
 func (SHA256) Version() string {
 	return "1"
 }
-

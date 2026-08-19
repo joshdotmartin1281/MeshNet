@@ -572,9 +572,9 @@ func testObject(
 	hash string,
 ) *domain.Object {
 	return &domain.Object{
-		ID:        id,
-		Hash:      hash,
-		Size:      11,
+		ID:   id,
+		Hash: hash,
+		Size: 11,
 		CreatedAt: time.Date(
 			2026,
 			time.January,
@@ -606,4 +606,3 @@ func testPayload(
 		Data:     data,
 	}
 }
-

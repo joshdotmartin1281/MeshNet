@@ -1,12 +1,12 @@
 package domain
 
 import (
-	"errors"
 	"context"
+	"errors"
 )
 
 var (
-	ErrNotFound = errors.New("object not found")
+	ErrNotFound  = errors.New("object not found")
 	ErrDuplicate = errors.New("object already exists")
 )
 
@@ -21,4 +21,3 @@ type ObjectRepository interface {
 
 	Delete(ctx context.Context, id string) error
 }
-

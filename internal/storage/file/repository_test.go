@@ -226,4 +226,3 @@ func TestStore_DeleteRemovesFiles(t *testing.T) {
 		)
 	}
 }
-

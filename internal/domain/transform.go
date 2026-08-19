@@ -1,9 +1,9 @@
 package domain
 
 type Transform struct {
-	Name string
+	Name    string
 	Version string
-	Params map[string]string
+	Params  map[string]string
 }
 
 type Processor interface {
@@ -15,4 +15,3 @@ type Processor interface {
 func (t Transform) Key() string {
 	return t.Name + "@" + t.Version
 }
-

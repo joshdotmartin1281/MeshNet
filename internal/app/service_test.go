@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"MeshNet/internal/api"
 	"MeshNet/internal/domain"
 )
 
@@ -27,6 +28,31 @@ func (f *fakeHasher) Name() string {
 
 func (f *fakeHasher) Version() string {
 	return "1"
+}
+
+type fakeProcessor struct {
+	name    string
+	version string
+	process func([]byte, domain.Transform) ([]byte, error)
+}
+
+func (f *fakeProcessor) Name() string {
+	return f.name
+}
+
+func (f *fakeProcessor) Version() string {
+	return f.version
+}
+
+func (f *fakeProcessor) Process(
+	data []byte,
+	transform domain.Transform,
+) ([]byte, error) {
+	if f.process != nil {
+		return f.process(data, transform)
+	}
+
+	return data, nil
 }
 
 type fakeRepository struct {
@@ -98,24 +124,47 @@ func (f *fakeRepository) Delete(
 	return nil
 }
 
+func newTestService(repo *fakeRepository) *Service {
+	uppercase := &fakeProcessor{
+		name:    "uppercase",
+		version: "1",
+		process: func(
+			data []byte,
+			transform domain.Transform,
+		) ([]byte, error) {
+			return bytes.ToUpper(data), nil
+		},
+	}
+
+	return New(
+		repo,
+		&fakeHasher{},
+		NewProcessor(uppercase),
+	)
+}
+
 func TestServicePut(t *testing.T) {
 	repo := &fakeRepository{}
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
 	data := []byte("hello world")
 
-	obj, err := service.Put(
+	resp, err := service.Put(
 		context.Background(),
-		domain.SourceCLI,
-		data,
+		api.PutRequest{
+			Source: domain.SourceCLI,
+			Data:   data,
+		},
 	)
 	if err != nil {
 		t.Fatalf("Put() error = %v", err)
 	}
 
-	if obj == nil {
+	if resp.Object == nil {
 		t.Fatal("Put() returned nil object")
 	}
+
+	obj := resp.Object
 
 	if obj.ID == "" {
 		t.Error("Put() generated empty ID")
@@ -187,21 +236,27 @@ func TestServicePutHash(t *testing.T) {
 		},
 	}
 
-	service := New(repo, hasher)
+	service := New(
+		repo,
+		hasher,
+		NewProcessor(),
+	)
 
-	obj, err := service.Put(
+	resp, err := service.Put(
 		context.Background(),
-		domain.SourceCLI,
-		[]byte("hello world"),
+		api.PutRequest{
+			Source: domain.SourceCLI,
+			Data:   []byte("hello world"),
+		},
 	)
 	if err != nil {
 		t.Fatalf("Put() error = %v", err)
 	}
 
-	if obj.Hash != "expected-hash" {
+	if resp.Object.Hash != "expected-hash" {
 		t.Errorf(
 			"Hash = %q, want %q",
-			obj.Hash,
+			resp.Object.Hash,
 			"expected-hash",
 		)
 	}
@@ -209,12 +264,14 @@ func TestServicePutHash(t *testing.T) {
 
 func TestServicePutEmptyData(t *testing.T) {
 	repo := &fakeRepository{}
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
-	obj, err := service.Put(
+	resp, err := service.Put(
 		context.Background(),
-		domain.SourceCLI,
-		nil,
+		api.PutRequest{
+			Source: domain.SourceCLI,
+			Data:   nil,
+		},
 	)
 
 	if err == nil {
@@ -229,10 +286,10 @@ func TestServicePutEmptyData(t *testing.T) {
 		)
 	}
 
-	if obj != nil {
+	if resp.Object != nil {
 		t.Errorf(
 			"Put() returned object = %v, want nil",
-			obj,
+			resp.Object,
 		)
 	}
 
@@ -243,15 +300,17 @@ func TestServicePutEmptyData(t *testing.T) {
 
 func TestServicePutCancelledContext(t *testing.T) {
 	repo := &fakeRepository{}
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	obj, err := service.Put(
+	resp, err := service.Put(
 		ctx,
-		domain.SourceCLI,
-		[]byte("hello"),
+		api.PutRequest{
+			Source: domain.SourceCLI,
+			Data:   []byte("hello"),
+		},
 	)
 
 	if !errors.Is(err, context.Canceled) {
@@ -261,10 +320,10 @@ func TestServicePutCancelledContext(t *testing.T) {
 		)
 	}
 
-	if obj != nil {
+	if resp.Object != nil {
 		t.Errorf(
 			"Put() returned object = %v, want nil",
-			obj,
+			resp.Object,
 		)
 	}
 
@@ -286,12 +345,14 @@ func TestServicePutRepositoryError(t *testing.T) {
 		},
 	}
 
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
-	obj, err := service.Put(
+	resp, err := service.Put(
 		context.Background(),
-		domain.SourceCLI,
-		[]byte("hello"),
+		api.PutRequest{
+			Source: domain.SourceCLI,
+			Data:   []byte("hello"),
+		},
 	)
 
 	if !errors.Is(err, expectedErr) {
@@ -302,11 +363,111 @@ func TestServicePutRepositoryError(t *testing.T) {
 		)
 	}
 
-	if obj != nil {
+	if resp.Object != nil {
 		t.Errorf(
 			"Put() returned object = %v, want nil",
-			obj,
+			resp.Object,
 		)
+	}
+}
+
+func TestServicePutTransform(t *testing.T) {
+	repo := &fakeRepository{}
+	service := newTestService(repo)
+
+	data := []byte("hello world")
+
+	resp, err := service.Put(
+		context.Background(),
+		api.PutRequest{
+			Source: domain.SourceCLI,
+			Data:   data,
+			Transforms: []domain.Transform{
+				{
+					Name:    "uppercase",
+					Version: "1",
+					Params:  map[string]string{},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Put() error = %v", err)
+	}
+
+	expected := []byte("HELLO WORLD")
+
+	if !bytes.Equal(repo.savedPayload.Data, expected) {
+		t.Errorf(
+			"stored payload = %q, want %q",
+			repo.savedPayload.Data,
+			expected,
+		)
+	}
+
+	if resp.Object.Hash != "test-hash" {
+		t.Errorf(
+			"Hash = %q, want test-hash",
+			resp.Object.Hash,
+		)
+	}
+}
+
+func TestServicePutStoresTransforms(t *testing.T) {
+	repo := &fakeRepository{}
+	service := newTestService(repo)
+
+	transforms := []domain.Transform{
+		{
+			Name:    "uppercase",
+			Version: "1",
+			Params:  map[string]string{},
+		},
+	}
+
+	_, err := service.Put(
+		context.Background(),
+		api.PutRequest{
+			Source:     domain.SourceCLI,
+			Data:       []byte("hello world"),
+			Transforms: transforms,
+		},
+	)
+	if err != nil {
+		t.Fatalf("Put() error = %v", err)
+	}
+
+	if repo.savedObject == nil {
+		t.Fatal("repository received nil object")
+	}
+
+	if len(repo.savedObject.Transforms) != 1 {
+		t.Fatalf(
+			"Transforms length = %d, want 1",
+			len(repo.savedObject.Transforms),
+		)
+	}
+
+	got := repo.savedObject.Transforms[0]
+
+	if got.Name != "uppercase" {
+		t.Errorf(
+			"Transform.Name = %q, want %q",
+			got.Name,
+			"uppercase",
+		)
+	}
+
+	if got.Version != "1" {
+		t.Errorf(
+			"Transform.Version = %q, want %q",
+			got.Version,
+			"1",
+		)
+	}
+
+	if got.Params == nil {
+		t.Fatal("Transform.Params = nil, want non-nil map")
 	}
 }
 
@@ -337,22 +498,74 @@ func TestServiceGet(t *testing.T) {
 		},
 	}
 
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
-	obj, payload, err := service.Get(
+	resp, err := service.Get(
 		context.Background(),
-		"object-1",
+		api.GetRequest{
+			ID: "object-1",
+		},
 	)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
 
-	if obj != expectedObject {
+	if resp.Object != expectedObject {
 		t.Error("Get() returned unexpected object")
 	}
 
-	if payload != expectedPayload {
+	if resp.Payload != expectedPayload {
 		t.Error("Get() returned unexpected payload")
+	}
+}
+
+func TestServiceGetTransform(t *testing.T) {
+	expectedObject := &domain.Object{
+		ID:   "object-1",
+		Hash: "hash-1",
+	}
+
+	expectedPayload := &domain.Payload{
+		ObjectID: "object-1",
+		Data:     []byte("hello"),
+	}
+
+	repo := &fakeRepository{
+		getFunc: func(
+			ctx context.Context,
+			id string,
+		) (*domain.Object, *domain.Payload, error) {
+			return expectedObject, expectedPayload, nil
+		},
+	}
+
+	service := newTestService(repo)
+
+	resp, err := service.Get(
+		context.Background(),
+		api.GetRequest{
+			ID: "object-1",
+			Transforms: []domain.Transform{
+				{
+					Name:    "uppercase",
+					Version: "1",
+					Params:  map[string]string{},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+
+	expected := []byte("HELLO")
+
+	if !bytes.Equal(resp.Payload.Data, expected) {
+		t.Errorf(
+			"Get() payload = %q, want %q",
+			resp.Payload.Data,
+			expected,
+		)
 	}
 }
 
@@ -383,22 +596,74 @@ func TestServiceGetByHash(t *testing.T) {
 		},
 	}
 
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
-	obj, payload, err := service.GetByHash(
+	resp, err := service.GetByHash(
 		context.Background(),
-		"hash-1",
+		api.GetByHashRequest{
+			Hash: "hash-1",
+		},
 	)
 	if err != nil {
 		t.Fatalf("GetByHash() error = %v", err)
 	}
 
-	if obj != expectedObject {
+	if resp.Object != expectedObject {
 		t.Error("GetByHash() returned unexpected object")
 	}
 
-	if payload != expectedPayload {
+	if resp.Payload != expectedPayload {
 		t.Error("GetByHash() returned unexpected payload")
+	}
+}
+
+func TestServiceGetByHashTransform(t *testing.T) {
+	expectedObject := &domain.Object{
+		ID:   "object-1",
+		Hash: "hash-1",
+	}
+
+	expectedPayload := &domain.Payload{
+		ObjectID: "object-1",
+		Data:     []byte("hello"),
+	}
+
+	repo := &fakeRepository{
+		getByHashFunc: func(
+			ctx context.Context,
+			hash string,
+		) (*domain.Object, *domain.Payload, error) {
+			return expectedObject, expectedPayload, nil
+		},
+	}
+
+	service := newTestService(repo)
+
+	resp, err := service.GetByHash(
+		context.Background(),
+		api.GetByHashRequest{
+			Hash: "hash-1",
+			Transforms: []domain.Transform{
+				{
+					Name:    "uppercase",
+					Version: "1",
+					Params:  map[string]string{},
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("GetByHash() error = %v", err)
+	}
+
+	expected := []byte("HELLO")
+
+	if !bytes.Equal(resp.Payload.Data, expected) {
+		t.Errorf(
+			"GetByHash() payload = %q, want %q",
+			resp.Payload.Data,
+			expected,
+		)
 	}
 }
 
@@ -420,27 +685,30 @@ func TestServiceList(t *testing.T) {
 		},
 	}
 
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
-	objects, err := service.List(context.Background())
+	resp, err := service.List(
+		context.Background(),
+		api.ListRequest{},
+	)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
 
-	if len(objects) != len(expected) {
+	if len(resp.Objects) != len(expected) {
 		t.Fatalf(
 			"List() returned %d objects, want %d",
-			len(objects),
+			len(resp.Objects),
 			len(expected),
 		)
 	}
 
 	for i := range expected {
-		if objects[i] != expected[i] {
+		if resp.Objects[i] != expected[i] {
 			t.Errorf(
 				"objects[%d] = %v, want %v",
 				i,
-				objects[i],
+				resp.Objects[i],
 				expected[i],
 			)
 		}
@@ -460,11 +728,13 @@ func TestServiceDelete(t *testing.T) {
 		},
 	}
 
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
-	err := service.Delete(
+	_, err := service.Delete(
 		context.Background(),
-		"object-1",
+		api.DeleteRequest{
+			ID: "object-1",
+		},
 	)
 	if err != nil {
 		t.Fatalf("Delete() error = %v", err)
@@ -507,12 +777,14 @@ func TestServiceErrorPropagation(t *testing.T) {
 		},
 	}
 
-	service := New(repo, &fakeHasher{})
+	service := newTestService(repo)
 
 	t.Run("Get", func(t *testing.T) {
-		_, _, err := service.Get(
+		_, err := service.Get(
 			context.Background(),
-			"missing",
+			api.GetRequest{
+				ID: "missing",
+			},
 		)
 
 		if !errors.Is(err, expectedErr) {
@@ -525,9 +797,11 @@ func TestServiceErrorPropagation(t *testing.T) {
 	})
 
 	t.Run("GetByHash", func(t *testing.T) {
-		_, _, err := service.GetByHash(
+		_, err := service.GetByHash(
 			context.Background(),
-			"missing",
+			api.GetByHashRequest{
+				Hash: "missing",
+			},
 		)
 
 		if !errors.Is(err, expectedErr) {
@@ -540,7 +814,10 @@ func TestServiceErrorPropagation(t *testing.T) {
 	})
 
 	t.Run("List", func(t *testing.T) {
-		_, err := service.List(context.Background())
+		_, err := service.List(
+			context.Background(),
+			api.ListRequest{},
+		)
 
 		if !errors.Is(err, expectedErr) {
 			t.Errorf(
@@ -552,9 +829,11 @@ func TestServiceErrorPropagation(t *testing.T) {
 	})
 
 	t.Run("Delete", func(t *testing.T) {
-		err := service.Delete(
+		_, err := service.Delete(
 			context.Background(),
-			"missing",
+			api.DeleteRequest{
+				ID: "missing",
+			},
 		)
 
 		if !errors.Is(err, expectedErr) {
@@ -566,4 +845,3 @@ func TestServiceErrorPropagation(t *testing.T) {
 		}
 	})
 }
-
