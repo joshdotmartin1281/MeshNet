@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
 	"fmt"
 	"os"
 	"strings"
 
 	"MeshNet/internal/app"
 	"MeshNet/internal/hash"
+	"MeshNet/internal/processors/encrypt"
 	"MeshNet/internal/processors/text"
 	"MeshNet/internal/storage/file"
 	"MeshNet/internal/transport/cli"
@@ -22,9 +24,16 @@ func main() {
 
 	hasher := hash.NewSHA256()
 
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		fmt.Println("error generating encryption key:", err)
+		return
+	}
+
 	processor := app.NewProcessor(
 		text.NewUppercase(),
 		text.NewLowercase(),
+		encrypt.NewEncrypt(key),
 	)
 
 	service := app.New(repo, hasher, processor)
