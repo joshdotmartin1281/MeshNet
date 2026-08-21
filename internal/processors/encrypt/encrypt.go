@@ -1,8 +1,6 @@
 package encrypt
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
 	"io"
@@ -33,14 +31,10 @@ func (e Encrypt) Process(data []byte, transform domain.Transform) ([]byte, error
 			transform.Key(),
 		)
 	}
-	block, err := aes.NewCipher(e.key)
-	if err != nil {
-		return nil, fmt.Errorf("create cipher: %w", err)
-	}
 
-	aead, err := cipher.NewGCM(block)
+	aead, err := NewGCM(e.key)
 	if err != nil {
-		return nil, fmt.Errorf("create GCM: %w", err)
+		return nil, err
 	}
 
 	nonce := make([]byte, aead.NonceSize())

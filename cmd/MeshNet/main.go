@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/rand"
 	"fmt"
 	"os"
 	"strings"
@@ -24,9 +23,9 @@ func main() {
 
 	hasher := hash.NewSHA256()
 
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		fmt.Println("error generating encryption key:", err)
+	key, err := encrypt.GenerateKey()
+	if err != nil {
+		fmt.Println("error:", err)
 		return
 	}
 
@@ -34,6 +33,7 @@ func main() {
 		text.NewUppercase(),
 		text.NewLowercase(),
 		encrypt.NewEncrypt(key),
+		encrypt.NewDecrypt(key),
 	)
 
 	service := app.New(repo, hasher, processor)
