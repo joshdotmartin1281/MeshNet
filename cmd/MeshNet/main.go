@@ -10,16 +10,17 @@ import (
 	"MeshNet/internal/hash"
 	"MeshNet/internal/processors/encrypt"
 	"MeshNet/internal/processors/text"
-	"MeshNet/internal/storage/file"
+	"MeshNet/internal/storage/sqlite"
 	"MeshNet/internal/transport/cli"
 )
 
 func main() {
-	repo, err := file.New("./mesh-net")
+	repo, err := sqlite.New("./mesh-net")
 	if err != nil {
 		fmt.Println("error:", err)
 		return
 	}
+	defer repo.Close()
 
 	hasher := hash.NewSHA256()
 
@@ -40,7 +41,7 @@ func main() {
 
 	fmt.Println("MeshNet")
 	fmt.Println("Type a command, or 'exit' to quit.")
-
+	
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
