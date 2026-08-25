@@ -53,11 +53,22 @@ func (s *Store) init() error {
 			object 	BLOB NOT NULL,
 			payload	BLOB
 		);
-
-		CREATE INDEX IF NOT EXISTS idx_objects_hash 
-			ON objects(hash);
 		`)
 	return err
+}
+
+func isUniqueViolation(err error) bool {
+	var sqliteErr interface {
+		ErrorCode() int
+	}
+
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+
+	const sqliteConstraint = 19
+
+	return sqliteErr.ErrorCode() == sqliteConstraint
 }
 
 func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Payload) error {
@@ -103,42 +114,144 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 	return nil
 }
 
-func isUniqueViolation(err error) bool {
-	var sqliteErr interface {
-		ErrorCode() int
+func (s *Store) Get(ctx context.Context, id string) (*domain.Object, *domain.Payload, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
 	}
 
-	if !errors.As(err, &sqliteErr) {
-		return false
+	var objectData 	[]byte
+	var payloadData []byte
+
+	err := s.db.QueryRowContext(ctx, `
+		SELECT object, payload
+		FROM objects
+		WHERE id = ?
+	`, id).Scan(&objectData, &payloadData)
+	
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, domain.ErrNotFound
+		}
+		return nil, nil, err
 	}
 
-	// SQLITE_CONSTRAINT = 19.
-	return sqliteErr.ErrorCode() == 19
+	var obj *domain.Object
+	if err := json.Unmarshal(objectData, &obj); err != nil {
+		return nil, nil, err
+	}
+
+	var payload *domain.Payload
+	if len(payloadData) > 0 {
+		payload = new(domain.Payload)
+
+		if err := json.Unmarshal(payloadData, payload); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return obj, payload, nil
 }
 
-func (s *Store) Get(
-	ctx context.Context,
-	id string,
-) (*domain.Object, *domain.Payload, error) {
-	panic("not implemented")
+func (s *Store) GetByHash(ctx context.Context, hash string) (*domain.Object, *domain.Payload, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	var objectData 	[]byte
+	var payloadData []byte
+
+	err := s.db.QueryRowContext(ctx, `
+		SELECT object, payload
+		FROM objects
+		WHERE hash = ?
+	`, hash).Scan(&objectData, &payloadData)
+	
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, domain.ErrNotFound
+		}
+		return nil, nil, err
+	}
+
+	var obj *domain.Object
+	if err := json.Unmarshal(objectData, &obj); err != nil {
+		return nil, nil, err
+	}
+
+	var payload *domain.Payload
+	if len(payloadData) > 0 {
+		payload = new(domain.Payload)
+
+		if err := json.Unmarshal(payloadData, payload); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return obj, payload, nil
 }
 
-func (s *Store) GetByHash(
-	ctx context.Context,
-	hash string,
-) (*domain.Object, *domain.Payload, error) {
-	panic("not implemented")
+func (s *Store) List(ctx context.Context) ([]*domain.Object, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT object
+		FROM objects
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	objects := make([]*domain.Object, 0)
+
+	for rows.Next() {
+		var objectData []byte
+
+		if err := rows.Scan(&objectData); err != nil {
+			return nil, err
+		}
+
+		var obj *domain.Object
+		if err := json.Unmarshal(objectData, &obj); err != nil {
+			return nil, err
+		}
+
+		if obj != nil {
+			objects = append(objects, obj)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return objects, nil
 }
 
-func (s *Store) List(
-	ctx context.Context,
-) ([]*domain.Object, error) {
-	panic("not implemented")
-}
+func (s *Store) Delete(ctx context.Context, id string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
-func (s *Store) Delete(
-	ctx context.Context,
-	id string,
-) error {
-	panic("not implemented")
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM objects
+		WHERE id = ?
+	`, id)
+	
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }
