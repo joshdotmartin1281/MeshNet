@@ -31,3 +31,25 @@ func Delete(port app.Port, args []string) error {
 
 	return err
 }
+
+func DeleteByHash(port app.Port, args []string) error {
+	fs := flag.NewFlagSet("delete-by-hash", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if fs.NArg() != 1 {
+		return errors.New("usage: delete-by-hash <hash>")
+	}
+
+	_, err := port.DeleteByHash(
+		context.Background(),
+		api.DeleteByHashRequest{
+			Hash: fs.Arg(0),
+		},
+	)
+
+	return err
+}

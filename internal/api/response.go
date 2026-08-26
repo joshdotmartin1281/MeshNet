@@ -16,3 +16,5 @@ type ListResponse struct {
 }
 
 type DeleteResponse struct{}
+
+type DeleteByHashResponse struct{}

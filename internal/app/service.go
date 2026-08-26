@@ -126,3 +126,10 @@ func (s *Service) Delete(ctx context.Context, req api.DeleteRequest) (api.Delete
 
 	return api.DeleteResponse{}, nil
 }
+
+func (s *Service) DeleteByHash(ctx context.Context, req api.DeleteByHashRequest) (api.DeleteByHashResponse, error) {
+	if err := s.repo.DeleteByHash(ctx, req.Hash); err != nil {
+		return api.DeleteByHashResponse{}, err
+	}
+	return api.DeleteByHashResponse{}, nil
+}

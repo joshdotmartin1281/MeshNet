@@ -20,4 +20,6 @@ type ObjectRepository interface {
 	List(ctx context.Context) ([]*Object, error)
 
 	Delete(ctx context.Context, id string) error
+
+	DeleteByHash(ctx context.Context, hash string) error
 }

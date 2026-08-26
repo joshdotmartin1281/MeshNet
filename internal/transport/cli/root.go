@@ -16,6 +16,8 @@ func Run(port app.Port, args []string) error {
 		return List(port, args[1:])
 	case "delete":
 		return Delete(port, args[1:])
+	case "delete-by-hash":
+		return DeleteByHash(port, args[1:])
 	case "get-by-hash":
 		return GetByHash(port, args[1:])
 	default:

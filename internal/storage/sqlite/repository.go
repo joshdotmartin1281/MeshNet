@@ -255,3 +255,29 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (s *Store) DeleteByHash(ctx context.Context, hash string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM objects
+		WHERE hash = ?
+	`, hash)
+	
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}

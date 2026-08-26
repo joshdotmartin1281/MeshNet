@@ -212,11 +212,8 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	if err := os.Remove(s.objectPath(id)); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return domain.ErrNotFound
-		}
-
+	if err := os.Remove(s.objectPath(obj.ID)); err != nil &&
+		!errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
@@ -226,6 +223,19 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (s *Store) DeleteByHash(ctx context.Context, hash string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	obj, _, err := s.GetByHash(ctx, hash)
+	if err != nil {
+		return err
+	}
+
+	return s.Delete(ctx, obj.ID)
 }
 
 func (s *Store) objectPath(id string) string {

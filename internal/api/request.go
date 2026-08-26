@@ -25,3 +25,7 @@ type ListRequest struct{}
 type DeleteRequest struct {
 	ID string
 }
+
+type DeleteByHashRequest struct {
+	Hash string
+}

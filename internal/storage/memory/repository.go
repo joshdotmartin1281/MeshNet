@@ -105,3 +105,16 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (s *Store) DeleteByHash(ctx context.Context, hash string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	
+	id, ok := s.hashes[hash]
+	if !ok {
+		return domain.ErrNotFound
+	}
+
+	return s.Delete(ctx, id)
+}
