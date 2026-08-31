@@ -72,6 +72,14 @@ func TestRepository(t *testing.T) {
 				testList(t, factory(t))
 			})
 
+			t.Run("PathIsolation", func(t *testing.T) {
+				testPathIsolation(t, factory(t))
+			})
+
+			t.Run("ListPathIsolation", func(t *testing.T) {
+				testListPathIsolation(t, factory(t))
+			})
+
 			t.Run("BinaryPayload", func(t *testing.T) {
 				testBinaryPayload(t, factory(t))
 			})
@@ -101,7 +109,11 @@ func testSaveAndGet(
 		t.Fatalf("Save() error = %v", err)
 	}
 
-	gotObject, gotPayload, err := repo.Get(ctx, obj.ID)
+	gotObject, gotPayload, err := repo.Get(
+		ctx,
+		obj.Path,
+		obj.ID,
+	)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
@@ -119,6 +131,14 @@ func testSaveAndGet(
 			"Hash = %q, want %q",
 			gotObject.Hash,
 			obj.Hash,
+		)
+	}
+
+	if gotObject.Path != obj.Path {
+		t.Errorf(
+			"Path = %q, want %q",
+			gotObject.Path,
+			obj.Path,
 		)
 	}
 
@@ -163,6 +183,7 @@ func testGetNotFound(
 
 	_, _, err := repo.Get(
 		context.Background(),
+		"test",
 		"does-not-exist",
 	)
 
@@ -194,6 +215,7 @@ func testGetByHash(
 
 	gotObject, gotPayload, err := repo.GetByHash(
 		ctx,
+		obj.Path,
 		obj.Hash,
 	)
 	if err != nil {
@@ -216,6 +238,14 @@ func testGetByHash(
 		)
 	}
 
+	if gotObject.Path != obj.Path {
+		t.Errorf(
+			"Path = %q, want %q",
+			gotObject.Path,
+			obj.Path,
+		)
+	}
+
 	if gotPayload.ObjectID != obj.ID {
 		t.Errorf(
 			"Payload.ObjectID = %q, want %q",
@@ -233,6 +263,7 @@ func testGetByHashNotFound(
 
 	_, _, err := repo.GetByHash(
 		context.Background(),
+		"test",
 		"does-not-exist",
 	)
 
@@ -334,11 +365,19 @@ func testDelete(
 		t.Fatalf("Save() error = %v", err)
 	}
 
-	if err := repo.Delete(ctx, obj.ID); err != nil {
+	if err := repo.Delete(
+		ctx,
+		obj.Path,
+		obj.ID,
+	); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
 
-	_, _, err := repo.Get(ctx, obj.ID)
+	_, _, err := repo.Get(
+		ctx,
+		obj.Path,
+		obj.ID,
+	)
 
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf(
@@ -347,7 +386,11 @@ func testDelete(
 		)
 	}
 
-	_, _, err = repo.GetByHash(ctx, obj.Hash)
+	_, _, err = repo.GetByHash(
+		ctx,
+		obj.Path,
+		obj.Hash,
+	)
 
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf(
@@ -365,6 +408,7 @@ func testDeleteNotFound(
 
 	err := repo.Delete(
 		context.Background(),
+		"test",
 		"does-not-exist",
 	)
 
@@ -382,7 +426,10 @@ func testListEmpty(
 ) {
 	t.Helper()
 
-	objects, err := repo.List(context.Background())
+	objects, err := repo.List(
+		context.Background(),
+		"test",
+	)
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -424,7 +471,7 @@ func testList(
 		}
 	}
 
-	got, err := repo.List(ctx)
+	got, err := repo.List(ctx, "test")
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
@@ -450,6 +497,188 @@ func testList(
 				obj.ID,
 			)
 		}
+	}
+}
+
+func testPathIsolation(
+	t *testing.T,
+	repo domain.ObjectRepository,
+) {
+	t.Helper()
+
+	ctx := context.Background()
+
+	obj1 := testObject("same-id", "hash-a")
+	obj1.Path = "path-a"
+
+	obj2 := testObject("same-id", "hash-b")
+	obj2.Path = "path-b"
+
+	payload1 := testPayload(
+		obj1.ID,
+		[]byte("path a"),
+	)
+
+	payload2 := testPayload(
+		obj2.ID,
+		[]byte("path b"),
+	)
+
+	if err := repo.Save(ctx, obj1, payload1); err != nil {
+		t.Fatalf(
+			"Save(path-a) error = %v",
+			err,
+		)
+	}
+
+	if err := repo.Save(ctx, obj2, payload2); err != nil {
+		t.Fatalf(
+			"Save(path-b) error = %v",
+			err,
+		)
+	}
+
+	gotObject, gotPayload, err := repo.Get(
+		ctx,
+		"path-a",
+		"same-id",
+	)
+	if err != nil {
+		t.Fatalf(
+			"Get(path-a) error = %v",
+			err,
+		)
+	}
+
+	if gotObject.Path != "path-a" {
+		t.Errorf(
+			"Get(path-a) returned Path = %q, want %q",
+			gotObject.Path,
+			"path-a",
+		)
+	}
+
+	if !bytes.Equal(
+		gotPayload.Data,
+		[]byte("path a"),
+	) {
+		t.Errorf(
+			"Get(path-a) payload = %q, want %q",
+			gotPayload.Data,
+			[]byte("path a"),
+		)
+	}
+
+	gotObject, gotPayload, err = repo.Get(
+		ctx,
+		"path-b",
+		"same-id",
+	)
+	if err != nil {
+		t.Fatalf(
+			"Get(path-b) error = %v",
+			err,
+		)
+	}
+
+	if gotObject.Path != "path-b" {
+		t.Errorf(
+			"Get(path-b) returned Path = %q, want %q",
+			gotObject.Path,
+			"path-b",
+		)
+	}
+
+	if !bytes.Equal(
+		gotPayload.Data,
+		[]byte("path b"),
+	) {
+		t.Errorf(
+			"Get(path-b) payload = %q, want %q",
+			gotPayload.Data,
+			[]byte("path b"),
+		)
+	}
+}
+
+func testListPathIsolation(
+	t *testing.T,
+	repo domain.ObjectRepository,
+) {
+	t.Helper()
+
+	ctx := context.Background()
+
+	obj1 := testObject("object-1", "hash-1")
+	obj1.Path = "path-a"
+
+	obj2 := testObject("object-2", "hash-2")
+	obj2.Path = "path-a"
+
+	obj3 := testObject("object-3", "hash-3")
+	obj3.Path = "path-b"
+
+	objects := []*domain.Object{
+		obj1,
+		obj2,
+		obj3,
+	}
+
+	for _, obj := range objects {
+		if err := repo.Save(
+			ctx,
+			obj,
+			testPayload(
+				obj.ID,
+				[]byte(obj.ID),
+			),
+		); err != nil {
+			t.Fatalf(
+				"Save(%q) error = %v",
+				obj.ID,
+				err,
+			)
+		}
+	}
+
+	got, err := repo.List(ctx, "path-a")
+	if err != nil {
+		t.Fatalf(
+			"List(path-a) error = %v",
+			err,
+		)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf(
+			"List(path-a) returned %d objects, want 2",
+			len(got),
+		)
+	}
+
+	found := make(map[string]bool)
+
+	for _, obj := range got {
+		if obj.Path != "path-a" {
+			t.Errorf(
+				"List(path-a) returned object with Path = %q",
+				obj.Path,
+			)
+		}
+
+		found[obj.ID] = true
+	}
+
+	if !found["object-1"] {
+		t.Error("List(path-a) missing object-1")
+	}
+
+	if !found["object-2"] {
+		t.Error("List(path-a) missing object-2")
+	}
+
+	if found["object-3"] {
+		t.Error("List(path-a) incorrectly returned object-3")
 	}
 }
 
@@ -485,7 +714,11 @@ func testBinaryPayload(
 		t.Fatalf("Save() error = %v", err)
 	}
 
-	_, got, err := repo.Get(ctx, obj.ID)
+	_, got, err := repo.Get(
+		ctx,
+		obj.Path,
+		obj.ID,
+	)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
@@ -516,20 +749,22 @@ func testCancelledContext(
 		[]byte("hello"),
 	)
 
-	if err := repo.Save(ctx, obj, payload); !errors.Is(
-		err,
-		context.Canceled,
-	) {
+	if err := repo.Save(
+		ctx,
+		obj,
+		payload,
+	); !errors.Is(err, context.Canceled) {
 		t.Errorf(
 			"Save() error = %v, want context.Canceled",
 			err,
 		)
 	}
 
-	if _, _, err := repo.Get(ctx, obj.ID); !errors.Is(
-		err,
-		context.Canceled,
-	) {
+	if _, _, err := repo.Get(
+		ctx,
+		obj.Path,
+		obj.ID,
+	); !errors.Is(err, context.Canceled) {
 		t.Errorf(
 			"Get() error = %v, want context.Canceled",
 			err,
@@ -538,6 +773,7 @@ func testCancelledContext(
 
 	if _, _, err := repo.GetByHash(
 		ctx,
+		obj.Path,
 		obj.Hash,
 	); !errors.Is(err, context.Canceled) {
 		t.Errorf(
@@ -546,10 +782,10 @@ func testCancelledContext(
 		)
 	}
 
-	if _, err := repo.List(ctx); !errors.Is(
-		err,
-		context.Canceled,
-	) {
+	if _, err := repo.List(
+		ctx,
+		obj.Path,
+	); !errors.Is(err, context.Canceled) {
 		t.Errorf(
 			"List() error = %v, want context.Canceled",
 			err,
@@ -558,6 +794,7 @@ func testCancelledContext(
 
 	if err := repo.Delete(
 		ctx,
+		obj.Path,
 		obj.ID,
 	); !errors.Is(err, context.Canceled) {
 		t.Errorf(
@@ -574,6 +811,7 @@ func testObject(
 	return &domain.Object{
 		ID:   id,
 		Hash: hash,
+		Path: "test",
 		Size: 11,
 		CreatedAt: time.Date(
 			2026,

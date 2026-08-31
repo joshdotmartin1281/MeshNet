@@ -46,13 +46,14 @@ func (s *Service) Put(ctx context.Context, req api.PutRequest) (api.PutResponse,
 	if len(data) == 0 {
 		return api.PutResponse{}, errors.New("empty payload after transforms")
 	}
-
+	
 	obj := &domain.Object{
-		ID:         domain.NewID().String(),
-		Source:     req.Source,
-		Size:       int64(len(data)),
-		CreatedAt:  time.Now().UTC(),
-		Transforms: req.Transforms,
+    	ID:         domain.NewID().String(),
+    	Source:     req.Source,
+    	Path:       req.Path,
+    	Size:       int64(len(data)),
+    	CreatedAt:  time.Now().UTC(),
+    	Transforms: req.Transforms,
 	}
 
 	obj.Hash = s.hasher.Hash(data)
@@ -72,7 +73,7 @@ func (s *Service) Put(ctx context.Context, req api.PutRequest) (api.PutResponse,
 }
 
 func (s *Service) Get(ctx context.Context, req api.GetRequest) (api.GetResponse, error) {
-	obj, payload, err := s.repo.Get(ctx, req.ID)
+	obj, payload, err := s.repo.Get(ctx, req.Path, req.ID)
 	if err != nil {
 		return api.GetResponse{}, err
 	}
@@ -91,7 +92,7 @@ func (s *Service) Get(ctx context.Context, req api.GetRequest) (api.GetResponse,
 }
 
 func (s *Service) GetByHash(ctx context.Context, req api.GetByHashRequest) (api.GetResponse, error) {
-	obj, payload, err := s.repo.GetByHash(ctx, req.Hash)
+	obj, payload, err := s.repo.GetByHash(ctx, req.Path, req.Hash)
 	if err != nil {
 		return api.GetResponse{}, err
 	}
@@ -109,7 +110,7 @@ func (s *Service) GetByHash(ctx context.Context, req api.GetByHashRequest) (api.
 }
 
 func (s *Service) List(ctx context.Context, req api.ListRequest) (api.ListResponse, error) {
-	objects, err := s.repo.List(ctx)
+	objects, err := s.repo.List(ctx, req.Path)
 	if err != nil {
 		return api.ListResponse{}, err
 	}
@@ -120,7 +121,7 @@ func (s *Service) List(ctx context.Context, req api.ListRequest) (api.ListRespon
 }
 
 func (s *Service) Delete(ctx context.Context, req api.DeleteRequest) (api.DeleteResponse, error) {
-	if err := s.repo.Delete(ctx, req.ID); err != nil {
+	if err := s.repo.Delete(ctx, req.Path, req.ID); err != nil {
 		return api.DeleteResponse{}, err
 	}
 
@@ -128,7 +129,7 @@ func (s *Service) Delete(ctx context.Context, req api.DeleteRequest) (api.Delete
 }
 
 func (s *Service) DeleteByHash(ctx context.Context, req api.DeleteByHashRequest) (api.DeleteByHashResponse, error) {
-	if err := s.repo.DeleteByHash(ctx, req.Hash); err != nil {
+	if err := s.repo.DeleteByHash(ctx, req.Path, req.Hash); err != nil {
 		return api.DeleteByHashResponse{}, err
 	}
 	return api.DeleteByHashResponse{}, nil

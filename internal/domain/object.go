@@ -5,6 +5,7 @@ import "time"
 type Object struct {
 	ID         string
 	Hash       string
+	Path	   string
 	Size       int64
 	Source     Source
 	CreatedAt  time.Time
