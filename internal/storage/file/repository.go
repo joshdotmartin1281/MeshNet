@@ -73,13 +73,13 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 		return err
 	}
 
-	if _, err := os.Stat(s.objectPath(obj.Path, obj.ID)); err == nil {
+	if _, err := os.Stat(s.objectPath(obj.Collection, obj.ID)); err == nil {
 		return domain.ErrDuplicate
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
-	if _, err := os.Stat(s.hashPath(obj.Path, obj.Hash)); err == nil {
+	if _, err := os.Stat(s.hashPath(obj.Collection, obj.Hash)); err == nil {
 		return domain.ErrDuplicate
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -95,24 +95,24 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 		return err
 	}
 
-	if err := writeFileAtomic(s.objectPath(obj.Path, obj.ID), data, 0644); err != nil {
+	if err := writeFileAtomic(s.objectPath(obj.Collection, obj.ID), data, 0644); err != nil {
 		return err
 	}
 
-	if err := writeFileAtomic(s.hashPath(obj.Path, obj.Hash), []byte(obj.ID), 0644); err != nil {
-		_ = os.Remove(s.objectPath(obj.Path, obj.ID))
+	if err := writeFileAtomic(s.hashPath(obj.Collection, obj.Hash), []byte(obj.ID), 0644); err != nil {
+		_ = os.Remove(s.objectPath(obj.Collection, obj.ID))
 		return err
 	}
 
 	return nil
 }
 
-func (s *Store) Get(ctx context.Context, path string, id string) (*domain.Object, *domain.Payload, error) {
+func (s *Store) Get(ctx context.Context, collection string, id string) (*domain.Object, *domain.Payload, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
 
-	data, err := os.ReadFile(s.objectPath(path, id))
+	data, err := os.ReadFile(s.objectPath(collection, id))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil, domain.ErrNotFound
@@ -130,12 +130,12 @@ func (s *Store) Get(ctx context.Context, path string, id string) (*domain.Object
 	return rec.Object, rec.Payload, nil
 }
 
-func (s *Store) GetByHash(ctx context.Context, path string, hash string) (*domain.Object, *domain.Payload, error) {
+func (s *Store) GetByHash(ctx context.Context, collection string, hash string) (*domain.Object, *domain.Payload, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
 
-	id, err := os.ReadFile(s.hashPath(path, hash))
+	id, err := os.ReadFile(s.hashPath(collection, hash))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil, domain.ErrNotFound
@@ -144,15 +144,15 @@ func (s *Store) GetByHash(ctx context.Context, path string, hash string) (*domai
 		return nil, nil, err
 	}
 
-	return s.Get(ctx, path, string(id))
+	return s.Get(ctx, collection, string(id))
 }
 
-func (s *Store) List(ctx context.Context, path string) ([]*domain.Object, error) {
+func (s *Store) List(ctx context.Context, collection string) ([]*domain.Object, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	dir := s.objectsDir(path)
+	dir := s.objectsDir(collection)
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -193,52 +193,52 @@ func (s *Store) List(ctx context.Context, path string) ([]*domain.Object, error)
 	return objects, nil
 }
 
-func (s *Store) Delete(ctx context.Context, path string, id string) error {
+func (s *Store) Delete(ctx context.Context, collection string, id string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
-	obj, _, err := s.Get(ctx, path, id)
+	obj, _, err := s.Get(ctx, collection, id)
 	if err != nil {
 		return err
 	}
 
-	if err := os.Remove(s.objectPath(path, obj.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := os.Remove(s.objectPath(collection, obj.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
-	if err := os.Remove(s.hashPath(path, obj.Hash)); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := os.Remove(s.hashPath(collection, obj.Hash)); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
 	return nil
 }
 
-func (s *Store) DeleteByHash(ctx context.Context, path string, hash string) error {
+func (s *Store) DeleteByHash(ctx context.Context, collection string, hash string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
-	obj, _, err := s.GetByHash(ctx, path, hash)
+	obj, _, err := s.GetByHash(ctx, collection, hash)
 	if err != nil {
 		return err
 	}
 
-	return s.Delete(ctx, path, obj.ID)
+	return s.Delete(ctx, collection, obj.ID)
 }
 
-func (s *Store) objectsDir(path string) string {
-	return filepath.Join(s.root, "paths", path, "objects")
+func (s *Store) objectsDir(collection string) string {
+	return filepath.Join(s.root, "paths", collection, "objects")
 }
 
-func (s *Store) hashesDir(path string) string {
-	return filepath.Join(s.root, "paths", path, "hashes")
+func (s *Store) hashesDir(collection string) string {
+	return filepath.Join(s.root, "paths", collection, "hashes")
 }
 
-func (s *Store) objectPath(path string, id string) string {
-	return filepath.Join(s.objectsDir(path), id+".json")
+func (s *Store) objectPath(collection string, id string) string {
+	return filepath.Join(s.objectsDir(collection), id+".json")
 }
 
-func (s *Store) hashPath(path string, hash string) string {
-	return filepath.Join(s.hashesDir(path), hash)
+func (s *Store) hashPath(collection string, hash string) string {
+	return filepath.Join(s.hashesDir(collection), hash)
 }

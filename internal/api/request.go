@@ -6,33 +6,35 @@ import (
 
 type PutRequest struct {
 	Source     domain.Source
-	Path	   string
+	Collection string
+	Name       string
+	MediaType  string
 	Data       []byte
 	Transforms []domain.Transform
 }
 
 type GetRequest struct {
 	ID         string
-	Path	   string
+	Collection string
 	Transforms []domain.Transform
 }
 
 type GetByHashRequest struct {
 	Hash       string
-	Path       string
+	Collection string
 	Transforms []domain.Transform
 }
 
-type ListRequest struct{
-	Path	   string
+type ListRequest struct {
+	Collection string
 }
 
 type DeleteRequest struct {
-	ID 		string
-	Path 	string
+	ID         string
+	Collection string
 }
 
 type DeleteByHashRequest struct {
-	Hash 	string
-	Path 	string
+	Hash       string
+	Collection string
 }

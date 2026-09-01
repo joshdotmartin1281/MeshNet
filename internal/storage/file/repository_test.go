@@ -20,9 +20,9 @@ func TestStore_PersistsAcrossInstances(t *testing.T) {
 	}
 
 	obj := &domain.Object{
-		ID:   "object-1",
-		Hash: "hash-1",
-		Path: "test",
+		ID:         "object-1",
+		Hash:       "hash-1",
+		Collection: "test",
 	}
 
 	payload := &domain.Payload{
@@ -39,7 +39,11 @@ func TestStore_PersistsAcrossInstances(t *testing.T) {
 		t.Fatalf("file.New() error = %v", err)
 	}
 
-	gotObject, gotPayload, err := store2.Get(ctx, obj.Path, obj.ID)
+	gotObject, gotPayload, err := store2.Get(
+		ctx,
+		obj.Collection,
+		obj.ID,
+	)
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
@@ -52,11 +56,11 @@ func TestStore_PersistsAcrossInstances(t *testing.T) {
 		)
 	}
 
-	if gotObject.Path != obj.Path {
+	if gotObject.Collection != obj.Collection {
 		t.Errorf(
-			"Path = %q, want %q",
-			gotObject.Path,
-			obj.Path,
+			"Collection = %q, want %q",
+			gotObject.Collection,
+			obj.Collection,
 		)
 	}
 
@@ -83,9 +87,9 @@ func TestStore_CreatesDirectories(t *testing.T) {
 	}
 
 	obj := &domain.Object{
-		ID:   "object-1",
-		Hash: "hash-1",
-		Path: "test",
+		ID:         "object-1",
+		Hash:       "hash-1",
+		Collection: "test",
 	}
 
 	payload := &domain.Payload{
@@ -104,14 +108,14 @@ func TestStore_CreatesDirectories(t *testing.T) {
 	objectsDir := filepath.Join(
 		storeDir,
 		"paths",
-		obj.Path,
+		obj.Collection,
 		"objects",
 	)
 
 	hashesDir := filepath.Join(
 		storeDir,
 		"paths",
-		obj.Path,
+		obj.Collection,
 		"hashes",
 	)
 
@@ -147,9 +151,9 @@ func TestStore_WritesObjectAndHashFiles(t *testing.T) {
 	}
 
 	obj := &domain.Object{
-		ID:   "object-1",
-		Hash: "hash-1",
-		Path: "test",
+		ID:         "object-1",
+		Hash:       "hash-1",
+		Collection: "test",
 	}
 
 	payload := &domain.Payload{
@@ -168,7 +172,7 @@ func TestStore_WritesObjectAndHashFiles(t *testing.T) {
 	objectPath := filepath.Join(
 		dir,
 		"paths",
-		obj.Path,
+		obj.Collection,
 		"objects",
 		obj.ID+".json",
 	)
@@ -176,7 +180,7 @@ func TestStore_WritesObjectAndHashFiles(t *testing.T) {
 	hashPath := filepath.Join(
 		dir,
 		"paths",
-		obj.Path,
+		obj.Collection,
 		"hashes",
 		obj.Hash,
 	)
@@ -205,9 +209,9 @@ func TestStore_DeleteRemovesFiles(t *testing.T) {
 	}
 
 	obj := &domain.Object{
-		ID:   "object-1",
-		Hash: "hash-1",
-		Path: "test",
+		ID:         "object-1",
+		Hash:       "hash-1",
+		Collection: "test",
 	}
 
 	payload := &domain.Payload{
@@ -221,14 +225,18 @@ func TestStore_DeleteRemovesFiles(t *testing.T) {
 		t.Fatalf("file.Save() error = %v", err)
 	}
 
-	if err := store.Delete(ctx, obj.Path, obj.ID); err != nil {
+	if err := store.Delete(
+		ctx,
+		obj.Collection,
+		obj.ID,
+	); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
 
 	objectPath := filepath.Join(
 		dir,
 		"paths",
-		obj.Path,
+		obj.Collection,
 		"objects",
 		obj.ID+".json",
 	)
@@ -236,7 +244,7 @@ func TestStore_DeleteRemovesFiles(t *testing.T) {
 	hashPath := filepath.Join(
 		dir,
 		"paths",
-		obj.Path,
+		obj.Collection,
 		"hashes",
 		obj.Hash,
 	)

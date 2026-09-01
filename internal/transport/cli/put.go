@@ -18,10 +18,12 @@ func Put(port app.Port, args []string) error {
 	fs := flag.NewFlagSet("put", flag.ContinueOnError)
 
 	file := fs.String("f", "", "file to upload")
+	text := fs.String("t", "", "text to input")
+	collection := fs.String("p", "", "collection to store object")
 
 	var transformArgs []string
 	fs.Func(
-		"transform",
+		"x",
 		"transform to apply (name@version)",
 		func(value string) error {
 			transformArgs = append(transformArgs, value)
@@ -35,6 +37,21 @@ func Put(port app.Port, args []string) error {
 		return err
 	}
 
+	if strings.TrimSpace(*collection) == "" {
+		return errors.New("collection is required")
+	}
+
+	if *file != "" && *text != "" {
+		return errors.New("cannot use -f and -t together")
+	}
+
+	if fs.NArg() > 0 {
+		return fmt.Errorf(
+			"unexpected argument %q: use -f for a file or -t for text",
+			fs.Arg(0),
+		)
+	}
+
 	var (
 		data []byte
 		err  error
@@ -43,10 +60,10 @@ func Put(port app.Port, args []string) error {
 	switch {
 	case *file != "":
 		data, err = os.ReadFile(*file)
-
+	case *text != "":
+		data = []byte(*text)
 	case fs.NArg() == 1:
 		data, err = os.ReadFile(fs.Arg(0))
-
 	default:
 		data, err = io.ReadAll(os.Stdin)
 	}
@@ -74,6 +91,7 @@ func Put(port app.Port, args []string) error {
 		context.Background(),
 		api.PutRequest{
 			Source:     domain.SourceCLI,
+			Collection:		*collection,
 			Data:       data,
 			Transforms: transforms,
 		},
@@ -83,6 +101,7 @@ func Put(port app.Port, args []string) error {
 	}
 
 	fmt.Printf("ID:   %s\n", resp.Object.ID)
+	fmt.Printf("collection: %s\n", resp.Object.Collection)
 	fmt.Printf("Hash: %s\n", resp.Object.Hash)
 	fmt.Printf("Size: %d bytes\n", resp.Object.Size)
 
