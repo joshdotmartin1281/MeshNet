@@ -5,49 +5,76 @@ import (
 	"errors"
 	"flag"
 	"io"
+	"strings"
 
 	"MeshNet/internal/api"
 	"MeshNet/internal/app"
 )
 
-func Delete(port app.Port, args []string) error {
+func Delete(ctx context.Context, port app.Port, args []string) error {
 	fs := flag.NewFlagSet("delete", flag.ContinueOnError)
+
+	collection := fs.String(
+		"c",
+		"",
+		"collection containing object",
+	)
+
 	fs.SetOutput(io.Discard)
 
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
+	if strings.TrimSpace(*collection) == "" {
+		return errors.New("collection is required")
+	}
+
 	if fs.NArg() != 1 {
-		return errors.New("usage: delete <id>")
+		return errors.New("usage: delete -c <collection> <id>")
 	}
 
 	_, err := port.Delete(
-		context.Background(),
+		ctx,
 		api.DeleteRequest{
-			ID: fs.Arg(0),
+			ID:         fs.Arg(0),
+			Collection: *collection,
 		},
 	)
 
 	return err
 }
 
-func DeleteByHash(port app.Port, args []string) error {
+func DeleteByHash(ctx context.Context, port app.Port, args []string) error {
 	fs := flag.NewFlagSet("delete-by-hash", flag.ContinueOnError)
+
+	collection := fs.String(
+		"c",
+		"",
+		"collection containing object",
+	)
+
 	fs.SetOutput(io.Discard)
 
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
+	if strings.TrimSpace(*collection) == "" {
+		return errors.New("collection is required")
+	}
+
 	if fs.NArg() != 1 {
-		return errors.New("usage: delete-by-hash <hash>")
+		return errors.New(
+			"usage: delete-by-hash -c <collection> <hash>",
+		)
 	}
 
 	_, err := port.DeleteByHash(
-		context.Background(),
+		ctx,
 		api.DeleteByHashRequest{
-			Hash: fs.Arg(0),
+			Hash:       fs.Arg(0),
+			Collection: *collection,
 		},
 	)
 

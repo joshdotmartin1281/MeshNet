@@ -1,25 +1,29 @@
 package cli
 
-import "MeshNet/internal/app"
+import (
+	"context"
 
-func Run(port app.Port, args []string) error {
+	"MeshNet/internal/app"
+)
+
+func Run(ctx context.Context, port app.Port, args []string) error {
 	if len(args) == 0 {
 		return ErrNoCommand
 	}
 
 	switch args[0] {
 	case "put":
-		return Put(port, args[1:])
+		return Put(ctx, port, args[1:])
 	case "get":
-		return Get(port, args[1:])
+		return Get(ctx, port, args[1:])
 	case "list":
-		return List(port, args[1:])
+		return List(ctx, port, args[1:])
 	case "delete":
-		return Delete(port, args[1:])
+		return Delete(ctx, port, args[1:])
 	case "delete-by-hash":
-		return DeleteByHash(port, args[1:])
+		return DeleteByHash(ctx, port, args[1:])
 	case "get-by-hash":
-		return GetByHash(port, args[1:])
+		return GetByHash(ctx, port, args[1:])
 	default:
 		return ErrUnknownCommand
 	}

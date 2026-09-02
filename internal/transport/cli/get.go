@@ -12,14 +12,16 @@ import (
 	"MeshNet/internal/domain"
 )
 
-func Get(port app.Port, args []string) error {
+func Get(ctx context.Context, port app.Port, args []string) error {
 	fs := flag.NewFlagSet("get", flag.ContinueOnError)
 
 	out := fs.String("o", "", "output file")
+	collection := fs.String("c", "", "collection to retrieve object")
 
 	var transformArgs []string
+
 	fs.Func(
-		"transform",
+		"x",
 		"transform to apply (name@version)",
 		func(value string) error {
 			transformArgs = append(transformArgs, value)
@@ -34,7 +36,9 @@ func Get(port app.Port, args []string) error {
 	}
 
 	if fs.NArg() != 1 {
-		return errors.New("usage: get [-o file] [-transform name@version] <id>")
+		return errors.New(
+			"usage: get [-p collection] [-o file] [-x name@version] <id>",
+		)
 	}
 
 	transforms := make([]domain.Transform, 0, len(transformArgs))
@@ -49,9 +53,10 @@ func Get(port app.Port, args []string) error {
 	}
 
 	resp, err := port.Get(
-		context.Background(),
+		ctx,
 		api.GetRequest{
 			ID:         fs.Arg(0),
+			Collection: *collection,
 			Transforms: transforms,
 		},
 	)
@@ -67,14 +72,16 @@ func Get(port app.Port, args []string) error {
 	return err
 }
 
-func GetByHash(port app.Port, args []string) error {
+func GetByHash(ctx context.Context, port app.Port, args []string) error {
 	fs := flag.NewFlagSet("get-by-hash", flag.ContinueOnError)
 
 	out := fs.String("o", "", "output file")
+	collection := fs.String("c", "", "collection to retrieve object")
 
 	var transformArgs []string
+
 	fs.Func(
-		"transform",
+		"x",
 		"transform to apply (name@version)",
 		func(value string) error {
 			transformArgs = append(transformArgs, value)
@@ -89,7 +96,9 @@ func GetByHash(port app.Port, args []string) error {
 	}
 
 	if fs.NArg() != 1 {
-		return errors.New("usage: get-by-hash [-o file] [-transform name@version] <hash>")
+		return errors.New(
+			"usage: get-by-hash [-p collection] [-o file] [-x name@version] <hash>",
+		)
 	}
 
 	transforms := make([]domain.Transform, 0, len(transformArgs))
@@ -104,9 +113,10 @@ func GetByHash(port app.Port, args []string) error {
 	}
 
 	resp, err := port.GetByHash(
-		context.Background(),
+		ctx,
 		api.GetByHashRequest{
 			Hash:       fs.Arg(0),
+			Collection: *collection,
 			Transforms: transforms,
 		},
 	)

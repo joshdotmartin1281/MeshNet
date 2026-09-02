@@ -47,6 +47,10 @@ func (s *Service) Put(ctx context.Context, req api.PutRequest) (api.PutResponse,
 		return api.PutResponse{}, errors.New("empty payload after transforms")
 	}
 
+	if err := ctx.Err(); err != nil {
+		return api.PutResponse{}, err
+	}
+
 	obj := &domain.Object{
 		ID:          domain.NewID().String(),
 		Collection:  req.Collection,

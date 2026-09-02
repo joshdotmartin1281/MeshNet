@@ -6,7 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"MeshNet/internal/api"
@@ -14,14 +16,15 @@ import (
 	"MeshNet/internal/domain"
 )
 
-func Put(port app.Port, args []string) error {
+func Put(ctx context.Context, port app.Port, args []string) error {
 	fs := flag.NewFlagSet("put", flag.ContinueOnError)
 
 	file := fs.String("f", "", "file to upload")
 	text := fs.String("t", "", "text to input")
-	collection := fs.String("p", "", "collection to store object")
+	collection := fs.String("c", "", "collection to store object")
 
 	var transformArgs []string
+
 	fs.Func(
 		"x",
 		"transform to apply (name@version)",
@@ -53,27 +56,42 @@ func Put(port app.Port, args []string) error {
 	}
 
 	var (
-		data []byte
-		err  error
+		data      []byte
+		err       error
+		name      string
+		mediaType string
 	)
 
 	switch {
 	case *file != "":
 		data, err = os.ReadFile(*file)
+		if err != nil {
+			return err
+		}
+
+		name = filepath.Base(*file)
+
 	case *text != "":
 		data = []byte(*text)
-	case fs.NArg() == 1:
-		data, err = os.ReadFile(fs.Arg(0))
+		name = "text.txt"
+
 	default:
 		data, err = io.ReadAll(os.Stdin)
-	}
+		if err != nil {
+			return err
+		}
 
-	if err != nil {
-		return err
+		name = "stdin"
 	}
 
 	if len(data) == 0 {
 		return errors.New("no input data")
+	}
+
+	if *text != "" {
+		mediaType = "text/plain"
+	} else {
+		mediaType = http.DetectContentType(data)
 	}
 
 	transforms := make([]domain.Transform, 0, len(transformArgs))
@@ -88,10 +106,12 @@ func Put(port app.Port, args []string) error {
 	}
 
 	resp, err := port.Put(
-		context.Background(),
+		ctx,
 		api.PutRequest{
 			Source:     domain.SourceCLI,
-			Collection:		*collection,
+			Collection: *collection,
+			Name:       name,
+			MediaType:  mediaType,
 			Data:       data,
 			Transforms: transforms,
 		},
@@ -100,15 +120,19 @@ func Put(port app.Port, args []string) error {
 		return err
 	}
 
-	fmt.Printf("ID:   %s\n", resp.Object.ID)
-	fmt.Printf("collection: %s\n", resp.Object.Collection)
-	fmt.Printf("Hash: %s\n", resp.Object.Hash)
-	fmt.Printf("Size: %d bytes\n", resp.Object.Size)
+	fmt.Printf("ID:         %s\n", resp.Object.ID)
+	fmt.Printf("Collection: %s\n", resp.Object.Collection)
+	fmt.Printf("Name:       %s\n", resp.Object.Name)
+	fmt.Printf("MediaType:  %s\n", resp.Object.MediaType)
+	fmt.Printf("Hash:       %s\n", resp.Object.Hash)
+	fmt.Printf("Size:       %d bytes\n", resp.Object.Size)
 
 	return nil
 }
 
 func parseTransform(value string) (domain.Transform, error) {
+	value = strings.TrimSpace(value)
+
 	parts := strings.SplitN(value, "@", 2)
 
 	if len(parts) != 2 {
@@ -118,7 +142,10 @@ func parseTransform(value string) (domain.Transform, error) {
 		)
 	}
 
-	if parts[0] == "" || parts[1] == "" {
+	name := strings.TrimSpace(parts[0])
+	version := strings.TrimSpace(parts[1])
+
+	if name == "" || version == "" {
 		return domain.Transform{}, fmt.Errorf(
 			"invalid transform %q: expected name@version",
 			value,
@@ -126,8 +153,8 @@ func parseTransform(value string) (domain.Transform, error) {
 	}
 
 	return domain.Transform{
-		Name:    parts[0],
-		Version: parts[1],
+		Name:    name,
+		Version: version,
 		Params:  map[string]string{},
 	}, nil
 }
