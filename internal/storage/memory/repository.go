@@ -127,6 +127,7 @@ func (s *Store) Delete(ctx context.Context, collection string, id string) error 
 		return domain.ErrNotFound
 	}
 
+	
 	delete(s.objects[collection], id)
 	delete(s.payloads[collection], id)
 	delete(s.hashes[collection], obj.Hash)

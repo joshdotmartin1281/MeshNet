@@ -11,12 +11,16 @@ import (
 	"MeshNet/internal/transport/cli"
 	"MeshNet/internal/processors/encrypt"
 	"MeshNet/internal/processors/text"
-	"MeshNet/internal/storage/memory"
+	"MeshNet/internal/storage/file"
 )
 
 func main() {
-	repo := memory.New()
+	repo, err := file.New("./mesh-net")
 
+	if err != nil {
+		return 
+	}
+		
 	hasher := hash.NewSHA256()
 
 	key, err := encrypt.GenerateKey()
