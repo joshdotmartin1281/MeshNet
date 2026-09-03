@@ -11,11 +11,11 @@ import (
 	"MeshNet/internal/transport/cli"
 	"MeshNet/internal/processors/encrypt"
 	"MeshNet/internal/processors/text"
-	"MeshNet/internal/storage/file"
+	"MeshNet/internal/storage/sqlite"
 )
 
 func main() {
-	repo, err := file.New("./mesh-net")
+	repo, err := sqlite.New("./sqlite/mesh-net")
 
 	if err != nil {
 		return 

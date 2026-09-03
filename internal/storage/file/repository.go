@@ -24,8 +24,8 @@ func New(root string) (*Store, error) {
 	}, nil
 }
 
-func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
-	dir := filepath.Dir(path)
+func writeFileAtomic(collection string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(collection)
 
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
@@ -60,7 +60,7 @@ func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 		return err
 	}
 
-	return os.Rename(tmpName, path)
+	return os.Rename(tmpName, collection)
 }
 
 func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Payload) error {

@@ -5,17 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	//"fmt"
+	"strings"
+	"time"
 
 	"MeshNet/internal/domain"
 
 	_ "modernc.org/sqlite"
 )
-
-type record struct {
-	Object  *domain.Object  `json:"object"`
-	Payload *domain.Payload `json:"payload"`
-}
 
 type Store struct {
 	db *sql.DB
@@ -35,6 +31,7 @@ func New(path string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
+
 	return store, nil
 }
 
@@ -47,28 +44,50 @@ func (s *Store) init() error {
 		PRAGMA journal_mode = WAL;
 		PRAGMA foreign_keys = ON;
 
-		CREATE TABLE IF NOT EXISTS objects (
-			id		TEXT PRIMARY KEY,
-			hash	TEXT NOT NULL UNIQUE,
-			object 	BLOB NOT NULL,
-			payload	BLOB
+		CREATE TABLE IF NOT EXISTS collections (
+			id         TEXT PRIMARY KEY,
+			created_at TEXT NOT NULL
 		);
-		`)
+
+		CREATE TABLE IF NOT EXISTS objects (
+			id            TEXT PRIMARY KEY,
+			collection_id TEXT NOT NULL,
+			hash          TEXT NOT NULL,
+			name          TEXT NOT NULL,
+			media_type    TEXT NOT NULL,
+			size          INTEGER NOT NULL,
+			source        BLOB NOT NULL,
+			created_at    TEXT NOT NULL,
+			transforms    BLOB NOT NULL,
+
+			FOREIGN KEY (collection_id)
+				REFERENCES collections(id)
+				ON DELETE CASCADE,
+
+			UNIQUE (collection_id, hash)
+		);
+
+		CREATE TABLE IF NOT EXISTS payloads (
+			object_id TEXT PRIMARY KEY,
+			data      BLOB NOT NULL,
+
+			FOREIGN KEY (object_id)
+				REFERENCES objects(id)
+				ON DELETE CASCADE
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_objects_collection
+			ON objects(collection_id);
+
+		CREATE INDEX IF NOT EXISTS idx_objects_hash
+			ON objects(hash);
+	`)
+
 	return err
 }
 
 func isUniqueViolation(err error) bool {
-	var sqliteErr interface {
-		ErrorCode() int
-	}
-
-	if !errors.As(err, &sqliteErr) {
-		return false
-	}
-
-	const sqliteConstraint = 19
-
-	return sqliteErr.ErrorCode() == sqliteConstraint
+	return strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
 func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Payload) error {
@@ -77,33 +96,73 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 	}
 
 	if obj == nil {
-		return domain.ErrNotFound
+		return errors.New("object is nil")
 	}
 
-	objectData, err := json.Marshal(obj)
+	if payload != nil {
+		if payload.ObjectID != "" && payload.ObjectID != obj.ID {
+			return errors.New("payload ObjectID does not match object ID")
+		}
+
+		if int64(len(payload.Data)) != obj.Size {
+			return errors.New("payload size does not match object size")
+		}
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	createdAt := obj.CreatedAt.Format(time.RFC3339Nano)
+
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO collections (
+			id,
+			created_at
+		)
+		VALUES (?, ?)
+		ON CONFLICT(id) DO NOTHING
+	`, obj.Collection, createdAt)
 	if err != nil {
 		return err
 	}
 
-	var payloadData []byte
-
-	if payload != nil {
-		payloadData, err = json.Marshal(payload)
-		if err != nil {
-			return err
-		}
+	sourceData, err := json.Marshal(obj.Source)
+	if err != nil {
+		return err
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	transformsData, err := json.Marshal(obj.Transforms)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO objects (
 			id,
+			collection_id,
 			hash,
-			object,
-			payload
+			name,
+			media_type,
+			size,
+			source,
+			created_at,
+			transforms
 		)
-		VALUES (?, ?, ?, ?)
-	`, obj.ID, obj.Hash, objectData, payloadData)
-
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`,
+		obj.ID,
+		obj.Collection,
+		obj.Hash,
+		obj.Name,
+		obj.MediaType,
+		obj.Size,
+		sourceData,
+		createdAt,
+		transformsData,
+	)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return domain.ErrDuplicate
@@ -111,94 +170,160 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 
 		return err
 	}
-	return nil
+
+	if payload != nil {
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO payloads (
+				object_id,
+				data
+			)
+			VALUES (?, ?)
+		`, obj.ID, payload.Data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
-func (s *Store) Get(ctx context.Context, id string) (*domain.Object, *domain.Payload, error) {
+func (s *Store) Get(ctx context.Context, collection string, id string) (*domain.Object, *domain.Payload, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
 
-	var objectData 	[]byte
-	var payloadData []byte
+	var (
+		hash           string
+		name           string
+		mediaType      string
+		size           int64
+		sourceData     []byte
+		createdAtData  string
+		transformsData []byte
+	)
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT object, payload
+		SELECT
+			hash,
+			name,
+			media_type,
+			size,
+			source,
+			created_at,
+			transforms
 		FROM objects
 		WHERE id = ?
-	`, id).Scan(&objectData, &payloadData)
-	
+		  AND collection_id = ?
+	`, id, collection).Scan(
+		&hash,
+		&name,
+		&mediaType,
+		&size,
+		&sourceData,
+		&createdAtData,
+		&transformsData,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, domain.ErrNotFound
 		}
+
 		return nil, nil, err
 	}
 
-	var obj *domain.Object
-	if err := json.Unmarshal(objectData, &obj); err != nil {
+	source, err := decodeSource(sourceData)
+	if err != nil {
 		return nil, nil, err
 	}
 
-	var payload *domain.Payload
-	if len(payloadData) > 0 {
-		payload = new(domain.Payload)
+	transforms, err := decodeTransforms(transformsData)
+	if err != nil {
+		return nil, nil, err
+	}
 
-		if err := json.Unmarshal(payloadData, payload); err != nil {
-			return nil, nil, err
+	createdAt, err := time.Parse(time.RFC3339Nano, createdAtData)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	obj := &domain.Object{
+		ID:         id,
+		Hash:       hash,
+		Collection: collection,
+		Name:       name,
+		MediaType:  mediaType,
+		Size:       size,
+		Source:     source,
+		CreatedAt:  createdAt,
+		Transforms: transforms,
+	}
+
+	var payloadData []byte
+
+	err = s.db.QueryRowContext(ctx, `
+		SELECT data
+		FROM payloads
+		WHERE object_id = ?
+	`, id).Scan(&payloadData)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return obj, nil, nil
 		}
+
+		return nil, nil, err
+	}
+
+	payload := &domain.Payload{
+		ObjectID: obj.ID,
+		Data:     payloadData,
 	}
 
 	return obj, payload, nil
 }
 
-func (s *Store) GetByHash(ctx context.Context, hash string) (*domain.Object, *domain.Payload, error) {
+func (s *Store) GetByHash(ctx context.Context, collection string, hash string) (*domain.Object, *domain.Payload, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
 
-	var objectData 	[]byte
-	var payloadData []byte
+	var id string
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT object, payload
+		SELECT id
 		FROM objects
-		WHERE hash = ?
-	`, hash).Scan(&objectData, &payloadData)
-	
+		WHERE collection_id = ?
+		  AND hash = ?
+	`, collection, hash).Scan(&id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, domain.ErrNotFound
 		}
+
 		return nil, nil, err
 	}
 
-	var obj *domain.Object
-	if err := json.Unmarshal(objectData, &obj); err != nil {
-		return nil, nil, err
-	}
-
-	var payload *domain.Payload
-	if len(payloadData) > 0 {
-		payload = new(domain.Payload)
-
-		if err := json.Unmarshal(payloadData, payload); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	return obj, payload, nil
+	return s.Get(ctx, collection, id)
 }
 
-func (s *Store) List(ctx context.Context) ([]*domain.Object, error) {
+func (s *Store) List(ctx context.Context, collection string) ([]*domain.Object, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT object
+		SELECT
+			id,
+			hash,
+			name,
+			media_type,
+			size,
+			source,
+			created_at,
+			transforms
 		FROM objects
-	`)
+		WHERE collection_id = ?
+		ORDER BY created_at ASC
+	`, collection)
 	if err != nil {
 		return nil, err
 	}
@@ -207,20 +332,56 @@ func (s *Store) List(ctx context.Context) ([]*domain.Object, error) {
 	objects := make([]*domain.Object, 0)
 
 	for rows.Next() {
-		var objectData []byte
+		var (
+			id             string
+			hash           string
+			name           string
+			mediaType      string
+			size           int64
+			sourceData     []byte
+			createdAtData  string
+			transformsData []byte
+		)
 
-		if err := rows.Scan(&objectData); err != nil {
+		if err := rows.Scan(
+			&id,
+			&hash,
+			&name,
+			&mediaType,
+			&size,
+			&sourceData,
+			&createdAtData,
+			&transformsData,
+		); err != nil {
 			return nil, err
 		}
 
-		var obj *domain.Object
-		if err := json.Unmarshal(objectData, &obj); err != nil {
+		source, err := decodeSource(sourceData)
+		if err != nil {
 			return nil, err
 		}
 
-		if obj != nil {
-			objects = append(objects, obj)
+		transforms, err := decodeTransforms(transformsData)
+		if err != nil {
+			return nil, err
 		}
+
+		createdAt, err := time.Parse(time.RFC3339Nano, createdAtData)
+		if err != nil {
+			return nil, err
+		}
+
+		objects = append(objects, &domain.Object{
+			ID:         id,
+			Hash:       hash,
+			Collection: collection,
+			Name:       name,
+			MediaType:  mediaType,
+			Size:       size,
+			Source:     source,
+			CreatedAt:  createdAt,
+			Transforms: transforms,
+		})
 	}
 
 	if err := rows.Err(); err != nil {
@@ -230,7 +391,7 @@ func (s *Store) List(ctx context.Context) ([]*domain.Object, error) {
 	return objects, nil
 }
 
-func (s *Store) Delete(ctx context.Context, id string) error {
+func (s *Store) Delete(ctx context.Context, collection string, id string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -238,8 +399,8 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	result, err := s.db.ExecContext(ctx, `
 		DELETE FROM objects
 		WHERE id = ?
-	`, id)
-	
+		  AND collection_id = ?
+	`, id, collection)
 	if err != nil {
 		return err
 	}
@@ -256,16 +417,16 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) DeleteByHash(ctx context.Context, hash string) error {
+func (s *Store) DeleteByHash(ctx context.Context, collection string, hash string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
 	result, err := s.db.ExecContext(ctx, `
 		DELETE FROM objects
-		WHERE hash = ?
-	`, hash)
-	
+		WHERE collection_id = ?
+		  AND hash = ?
+	`, collection, hash)
 	if err != nil {
 		return err
 	}
@@ -280,4 +441,24 @@ func (s *Store) DeleteByHash(ctx context.Context, hash string) error {
 	}
 
 	return nil
+}
+
+func decodeSource(data []byte) (domain.Source, error) {
+	var source domain.Source
+
+	if err := json.Unmarshal(data, &source); err != nil {
+		return source, err
+	}
+
+	return source, nil
+}
+
+func decodeTransforms(data []byte) ([]domain.Transform, error) {
+	var transforms []domain.Transform
+
+	if err := json.Unmarshal(data, &transforms); err != nil {
+		return nil, err
+	}
+
+	return transforms, nil
 }
