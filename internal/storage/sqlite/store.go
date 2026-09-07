@@ -5,10 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"MeshNet/internal/domain"
+	"MeshNet/internal/storage"
 
 	_ "modernc.org/sqlite"
 )
@@ -17,7 +20,14 @@ type Store struct {
 	db *sql.DB
 }
 
+var _ storage.ObjectStore = (*Store)(nil)
+var _ storage.RelationalStore = (*Store)(nil)
+
 func New(path string) (*Store, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return nil, err
+	}
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
@@ -37,6 +47,18 @@ func New(path string) (*Store, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+func (s *Store) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return s.db.ExecContext(ctx, query, args...)
+}
+
+func (s *Store) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return s.db.QueryContext(ctx, query, args...)
+}
+
+func (s *Store) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	return s.db.QueryRowContext(ctx, query, args...)
 }
 
 func (s *Store) init() error {

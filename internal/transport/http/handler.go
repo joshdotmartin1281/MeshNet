@@ -7,7 +7,7 @@ type Handler struct {
 }
 
 func NewHandler(port app.Port) *Handler {
-	return &Handler {
+	return &Handler{
 		port: port,
 	}
 }

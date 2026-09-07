@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"MeshNet/internal/domain"
+	"MeshNet/internal/storage"
 )
 
 type Store struct {
@@ -11,6 +12,8 @@ type Store struct {
 	payloads map[string]map[string]*domain.Payload
 	hashes   map[string]map[string]string
 }
+
+var _ storage.ObjectStore = (*Store)(nil)
 
 func New() *Store {
 	return &Store{
@@ -20,7 +23,11 @@ func New() *Store {
 	}
 }
 
-func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Payload) error {
+func (s *Store) Save(
+	ctx context.Context,
+	obj *domain.Object,
+	payload *domain.Payload,
+) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -48,7 +55,11 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 	return nil
 }
 
-func (s *Store) Get(ctx context.Context, collection string, id string) (*domain.Object, *domain.Payload, error) {
+func (s *Store) Get(
+	ctx context.Context,
+	collection string,
+	id string,
+) (*domain.Object, *domain.Payload, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
@@ -71,7 +82,11 @@ func (s *Store) Get(ctx context.Context, collection string, id string) (*domain.
 	return obj, payload, nil
 }
 
-func (s *Store) GetByHash(ctx context.Context, collection string, hash string) (*domain.Object, *domain.Payload, error) {
+func (s *Store) GetByHash(
+	ctx context.Context,
+	collection string,
+	hash string,
+) (*domain.Object, *domain.Payload, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
@@ -89,7 +104,10 @@ func (s *Store) GetByHash(ctx context.Context, collection string, hash string) (
 	return s.Get(ctx, collection, id)
 }
 
-func (s *Store) List(ctx context.Context, collection string) ([]*domain.Object, error) {
+func (s *Store) List(
+	ctx context.Context,
+	collection string,
+) ([]*domain.Object, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -112,7 +130,11 @@ func (s *Store) List(ctx context.Context, collection string) ([]*domain.Object, 
 	return objects, nil
 }
 
-func (s *Store) Delete(ctx context.Context, collection string, id string) error {
+func (s *Store) Delete(
+	ctx context.Context,
+	collection string,
+	id string,
+) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -127,7 +149,6 @@ func (s *Store) Delete(ctx context.Context, collection string, id string) error 
 		return domain.ErrNotFound
 	}
 
-	
 	delete(s.objects[collection], id)
 	delete(s.payloads[collection], id)
 	delete(s.hashes[collection], obj.Hash)
@@ -135,7 +156,11 @@ func (s *Store) Delete(ctx context.Context, collection string, id string) error 
 	return nil
 }
 
-func (s *Store) DeleteByHash(ctx context.Context, collection string, hash string) error {
+func (s *Store) DeleteByHash(
+	ctx context.Context,
+	collection string,
+	hash string,
+) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

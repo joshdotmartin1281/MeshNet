@@ -1,4 +1,3 @@
-
 package http
 
 import "net/http"
@@ -13,4 +12,3 @@ func (h *Handler) Routes() http.Handler {
 
 	return mux
 }
-

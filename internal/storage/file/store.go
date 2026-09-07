@@ -8,11 +8,14 @@ import (
 	"path/filepath"
 
 	"MeshNet/internal/domain"
+	"MeshNet/internal/storage"
 )
 
 type Store struct {
 	root string
 }
+
+var _ storage.ObjectStore = (*Store)(nil)
 
 func New(root string) (*Store, error) {
 	if err := os.MkdirAll(root, 0755); err != nil {
@@ -24,8 +27,8 @@ func New(root string) (*Store, error) {
 	}, nil
 }
 
-func writeFileAtomic(collection string, data []byte, perm os.FileMode) error {
-	dir := filepath.Dir(collection)
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
 
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
@@ -60,10 +63,14 @@ func writeFileAtomic(collection string, data []byte, perm os.FileMode) error {
 		return err
 	}
 
-	return os.Rename(tmpName, collection)
+	return os.Rename(tmpName, path)
 }
 
-func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Payload) error {
+func (s *Store) Save(
+	ctx context.Context,
+	obj *domain.Object,
+	payload *domain.Payload,
+) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -119,7 +126,11 @@ func (s *Store) Save(ctx context.Context, obj *domain.Object, payload *domain.Pa
 	return nil
 }
 
-func (s *Store) getObject(ctx context.Context, collection string, id string) (*domain.Object, error) {
+func (s *Store) getObject(
+	ctx context.Context,
+	collection string,
+	id string,
+) (*domain.Object, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -142,13 +153,19 @@ func (s *Store) getObject(ctx context.Context, collection string, id string) (*d
 	return &obj, nil
 }
 
-func (s *Store) Get(ctx context.Context, collection string, id string) (*domain.Object, *domain.Payload, error) {
+func (s *Store) Get(
+	ctx context.Context,
+	collection string,
+	id string,
+) (*domain.Object, *domain.Payload, error) {
 	obj, err := s.getObject(ctx, collection, id)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	payloadData, err := os.ReadFile(s.payloadPath(collection, obj.Hash))
+	payloadData, err := os.ReadFile(
+		s.payloadPath(collection, obj.Hash),
+	)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return obj, nil, domain.ErrNotFound
@@ -163,7 +180,11 @@ func (s *Store) Get(ctx context.Context, collection string, id string) (*domain.
 	}, nil
 }
 
-func (s *Store) GetByHash(ctx context.Context, collection string, hash string) (*domain.Object, *domain.Payload, error) {
+func (s *Store) GetByHash(
+	ctx context.Context,
+	collection string,
+	hash string,
+) (*domain.Object, *domain.Payload, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
@@ -180,7 +201,10 @@ func (s *Store) GetByHash(ctx context.Context, collection string, hash string) (
 	return s.Get(ctx, collection, string(id))
 }
 
-func (s *Store) List(ctx context.Context, collection string) ([]*domain.Object, error) {
+func (s *Store) List(
+	ctx context.Context,
+	collection string,
+) ([]*domain.Object, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -207,7 +231,9 @@ func (s *Store) List(ctx context.Context, collection string) ([]*domain.Object, 
 			continue
 		}
 
-		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		data, err := os.ReadFile(
+			filepath.Join(dir, entry.Name()),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -230,21 +256,31 @@ func (s *Store) removeEmptyCollectionDirs(collection string) {
 	_ = os.Remove(s.collectionDir(collection))
 }
 
-func (s *Store) Delete(ctx context.Context, collection string, id string) error {
+func (s *Store) Delete(
+	ctx context.Context,
+	collection string,
+	id string,
+) error {
 	obj, err := s.getObject(ctx, collection, id)
 	if err != nil {
 		return err
 	}
 
-	if err := os.Remove(s.objectPath(collection, obj.ID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := os.Remove(
+		s.objectPath(collection, obj.ID),
+	); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
-	if err := os.Remove(s.hashPath(collection, obj.Hash)); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := os.Remove(
+		s.hashPath(collection, obj.Hash),
+	); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
-	if err := os.Remove(s.payloadPath(collection, obj.Hash)); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := os.Remove(
+		s.payloadPath(collection, obj.Hash),
+	); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
@@ -253,7 +289,11 @@ func (s *Store) Delete(ctx context.Context, collection string, id string) error 
 	return nil
 }
 
-func (s *Store) DeleteByHash(ctx context.Context, collection string, hash string) error {
+func (s *Store) DeleteByHash(
+	ctx context.Context,
+	collection string,
+	hash string,
+) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -279,17 +319,27 @@ func (s *Store) hashesDir(collection string) string {
 }
 
 func (s *Store) collectionDir(collection string) string {
-	return filepath.Join(s.root, collection) 
+	return filepath.Join(s.root, collection)
 }
 
 func (s *Store) objectPath(collection string, id string) string {
-	return filepath.Join(s.objectsDir(collection), id+".json")
+	return filepath.Join(
+		s.objectsDir(collection),
+		id+".json",
+	)
 }
 
 func (s *Store) hashPath(collection string, hash string) string {
-	return filepath.Join(s.hashesDir(collection), hash)
+	return filepath.Join(
+		s.hashesDir(collection),
+		hash,
+	)
 }
 
 func (s *Store) payloadPath(collection string, hash string) string {
-	return filepath.Join(s.root, collection, hash+".bin")
+	return filepath.Join(
+		s.root,
+		collection,
+		hash+".bin",
+	)
 }

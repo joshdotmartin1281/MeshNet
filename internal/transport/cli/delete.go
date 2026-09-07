@@ -11,7 +11,7 @@ import (
 	"MeshNet/internal/app"
 )
 
-func Delete(ctx context.Context, port app.Port, args []string) error {
+func Delete(ctx context.Context, port app.ObjectPort, args []string) error {
 	fs := flag.NewFlagSet("delete", flag.ContinueOnError)
 
 	collection := fs.String(
@@ -45,7 +45,7 @@ func Delete(ctx context.Context, port app.Port, args []string) error {
 	return err
 }
 
-func DeleteByHash(ctx context.Context, port app.Port, args []string) error {
+func DeleteByHash(ctx context.Context, port app.ObjectPort, args []string) error {
 	fs := flag.NewFlagSet("delete-by-hash", flag.ContinueOnError)
 
 	collection := fs.String(

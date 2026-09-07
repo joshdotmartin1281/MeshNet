@@ -12,7 +12,7 @@ import (
 	"MeshNet/internal/domain"
 )
 
-func Get(ctx context.Context, port app.Port, args []string) error {
+func Get(ctx context.Context, port app.ObjectPort, args []string) error {
 	fs := flag.NewFlagSet("get", flag.ContinueOnError)
 
 	out := fs.String("o", "", "output file")
@@ -72,7 +72,7 @@ func Get(ctx context.Context, port app.Port, args []string) error {
 	return err
 }
 
-func GetByHash(ctx context.Context, port app.Port, args []string) error {
+func GetByHash(ctx context.Context, port app.ObjectPort, args []string) error {
 	fs := flag.NewFlagSet("get-by-hash", flag.ContinueOnError)
 
 	out := fs.String("o", "", "output file")

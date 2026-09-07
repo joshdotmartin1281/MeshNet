@@ -7,15 +7,16 @@ import (
 
 	"MeshNet/internal/api"
 	"MeshNet/internal/domain"
+	"MeshNet/internal/storage"
 )
 
 type Service struct {
-	repo      domain.ObjectRepository
+	repo      storage.ObjectStore
 	hasher    domain.Hasher
 	processor *Processor
 }
 
-func New(repo domain.ObjectRepository, hasher domain.Hasher, processor *Processor) *Service {
+func New(repo storage.ObjectStore, hasher domain.Hasher, processor *Processor) *Service {
 	return &Service{
 		repo:      repo,
 		hasher:    hasher,
@@ -52,14 +53,14 @@ func (s *Service) Put(ctx context.Context, req api.PutRequest) (api.PutResponse,
 	}
 
 	obj := &domain.Object{
-		ID:          domain.NewID().String(),
-		Collection:  req.Collection,
-		Name:        req.Name,
-		MediaType:   req.MediaType,
-		Size:        int64(len(data)),
-		Source:      req.Source,
-		CreatedAt:   time.Now().UTC(),
-		Transforms:  req.Transforms,
+		ID:         domain.NewID().String(),
+		Collection: req.Collection,
+		Name:       req.Name,
+		MediaType:  req.MediaType,
+		Size:       int64(len(data)),
+		Source:     req.Source,
+		CreatedAt:  time.Now().UTC(),
+		Transforms: req.Transforms,
 	}
 
 	obj.Hash = s.hasher.Hash(data)

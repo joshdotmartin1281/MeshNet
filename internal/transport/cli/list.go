@@ -11,7 +11,7 @@ import (
 	"MeshNet/internal/app"
 )
 
-func List(ctx context.Context, port app.Port, args []string) error {
+func List(ctx context.Context, port app.ObjectPort, args []string) error {
 	fs := flag.NewFlagSet("list", flag.ContinueOnError)
 
 	collection := fs.String(

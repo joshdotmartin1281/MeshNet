@@ -16,7 +16,7 @@ import (
 	"MeshNet/internal/domain"
 )
 
-func Put(ctx context.Context, port app.Port, args []string) error {
+func Put(ctx context.Context, port app.ObjectPort, args []string) error {
 	fs := flag.NewFlagSet("put", flag.ContinueOnError)
 
 	file := fs.String("f", "", "file to upload")

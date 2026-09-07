@@ -8,19 +8,21 @@ import (
 	"MeshNet/internal/app"
 	"MeshNet/internal/domain"
 	"MeshNet/internal/hash"
-	"MeshNet/internal/transport/cli"
 	"MeshNet/internal/processors/encrypt"
 	"MeshNet/internal/processors/text"
+	"MeshNet/internal/storage"
 	"MeshNet/internal/storage/sqlite"
+	"MeshNet/internal/transport/cli"
 )
 
 func main() {
 	repo, err := sqlite.New("./sqlite/mesh-net")
-
 	if err != nil {
-		return 
+		fmt.Println("storage error:", err)
+		return
 	}
-		
+	defer repo.Close()
+
 	hasher := hash.NewSHA256()
 
 	key, err := encrypt.GenerateKey()
@@ -39,6 +41,42 @@ func main() {
 	service := app.New(repo, hasher, processor)
 
 	ctx := context.Background()
+	var relational storage.RelationalStore = repo
+
+	_, err = relational.ExecContext(ctx, `
+	CREATE TABLE IF NOT EXISTS tags (
+		id INTEGER PRIMARY KEY,
+		name TEXT NOT NULL
+	)
+`)
+	if err != nil {
+		fmt.Println("relational create table error:", err)
+		return
+	}
+
+	_, err = relational.ExecContext(ctx, `
+	INSERT INTO tags (name) VALUES (?)
+`, "test")
+	if err != nil {
+		fmt.Println("relational insert error:", err)
+		return
+	}
+
+	var tag string
+
+	err = relational.QueryRowContext(ctx, `
+	SELECT name
+	FROM tags
+	WHERE id = 1
+`).Scan(&tag)
+	if err != nil {
+		fmt.Println("relational query error:", err)
+		return
+	}
+
+	fmt.Println("Relational store:")
+	fmt.Printf("Tag: %s\n", tag)
+	fmt.Println()
 
 	putAlice, err := service.Put(ctx, api.PutRequest{
 		Collection: "alice",
