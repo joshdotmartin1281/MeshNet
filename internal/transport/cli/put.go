@@ -104,18 +104,17 @@ func Put(ctx context.Context, port app.ObjectPort, args []string) error {
 
 		transforms = append(transforms, transform)
 	}
+	appReq := api.PutRequest{
+		Source:     domain.SourceCLI,
+		Collection: *collection,
+		Name:       name,
+		MediaType:  mediaType,
+		Data:       data,
+		Transforms: transforms,
+	}
 
-	resp, err := port.Put(
-		ctx,
-		api.PutRequest{
-			Source:     domain.SourceCLI,
-			Collection: *collection,
-			Name:       name,
-			MediaType:  mediaType,
-			Data:       data,
-			Transforms: transforms,
-		},
-	)
+	resp, err := port.Put(ctx, appReq)
+	
 	if err != nil {
 		return err
 	}

@@ -1,27 +1,60 @@
 package http
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
-	//"MeshNet/internal/api"
-	//"MeshNet/internal/domain"
+
+	"MeshNet/internal/api"
+	"MeshNet/internal/domain"
 )
 
 func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
-	// Decode HTTP request
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-	// Build application request
-	//req := api.PutRequest{
-	//Source:     domain.SourceHTTP,
-	//Data:       data,
-	//Transforms: transforms,
-	//}
+	if len(data) == 0 {
+		http.Error(w, "no input data", http.StatusBadRequest)
+		return
+	}
 
-	// Call application layer
-	//resp, err := h.port.Put(r.Context(), req)
-	//if err != nil {
-	// HTTP error response
-	//return
-	//}
+	collection := r.URL.Query().Get("collection")
+	if collection == "" {
+		http.Error(w, "collection is required", http.StatusBadRequest)
+		return
+	}
 
-	// Encode response
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	mediaType := r.Header.Get("Content-Type")
+	if mediaType == "" {
+		mediaType = http.DetectContentType(data)
+	}
+
+	resp, err := h.port.Put(
+		r.Context(),
+		api.PutRequest{
+			Source:     domain.SourceHTTP,
+			Collection: collection,
+			Name:       name,
+			MediaType:  mediaType,
+			Data:       data,
+		},
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	_ = json.NewEncoder(w).Encode(resp)
 }
