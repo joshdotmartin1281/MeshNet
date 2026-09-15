@@ -114,7 +114,7 @@ func Put(ctx context.Context, port app.ObjectPort, args []string) error {
 	}
 
 	resp, err := port.Put(ctx, appReq)
-	
+
 	if err != nil {
 		return err
 	}
