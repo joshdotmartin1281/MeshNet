@@ -44,7 +44,7 @@ func Get(ctx context.Context, port app.ObjectPort, args []string) error {
 	transforms := make([]domain.Transform, 0, len(transformArgs))
 
 	for _, value := range transformArgs {
-		transform, err := parseTransform(value)
+		transform, err := domain.ParseTransform(value)
 		if err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func GetByHash(ctx context.Context, port app.ObjectPort, args []string) error {
 	transforms := make([]domain.Transform, 0, len(transformArgs))
 
 	for _, value := range transformArgs {
-		transform, err := parseTransform(value)
+		transform, err := domain.ParseTransform(value)
 		if err != nil {
 			return err
 		}

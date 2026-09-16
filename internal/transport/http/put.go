@@ -21,13 +21,15 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collection := r.URL.Query().Get("collection")
+	query := r.URL.Query()
+
+	collection := query.Get("collection")
 	if collection == "" {
 		http.Error(w, "collection is required", http.StatusBadRequest)
 		return
 	}
 
-	name := r.URL.Query().Get("name")
+	name := query.Get("name")
 	if name == "" {
 		http.Error(w, "name is required", http.StatusBadRequest)
 		return
@@ -38,6 +40,17 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 		mediaType = http.DetectContentType(data)
 	}
 
+	transforms := make([]domain.Transform, 0, len(query["transform"]))
+
+	for _, value := range query["transform"] {
+		transform, err := domain.ParseTransform(value)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		transforms = append(transforms, transform)
+	}
+
 	resp, err := h.port.Put(
 		r.Context(),
 		api.PutRequest{
@@ -46,6 +59,7 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 			Name:       name,
 			MediaType:  mediaType,
 			Data:       data,
+			Transforms: transforms,
 		},
 	)
 	if err != nil {

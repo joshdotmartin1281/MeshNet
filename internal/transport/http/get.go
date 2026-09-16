@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"MeshNet/internal/api"
+	"MeshNet/internal/domain"
 )
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
@@ -15,11 +16,23 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	transforms := make([]domain.Transform, 0, len(r.URL.Query()["transform"]))
+
+	for _, value := range r.URL.Query()["transform"] {
+		transform, err := domain.ParseTransform(value)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		transforms = append(transforms, transform)
+	}
+
 	resp, err := h.port.Get(
 		r.Context(),
 		api.GetRequest{
 			ID:         id,
 			Collection: collection,
+			Transforms: transforms,
 		},
 	)
 	if err != nil {
@@ -39,11 +52,23 @@ func (h *Handler) getByHash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	transforms := make([]domain.Transform, 0, len(r.URL.Query()["transform"]))
+
+	for _, value := range r.URL.Query()["transform"] {
+		transform, err := domain.ParseTransform(value)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		transforms = append(transforms, transform)
+	}
+
 	resp, err := h.port.GetByHash(
 		r.Context(),
 		api.GetByHashRequest{
 			Hash:       hash,
 			Collection: collection,
+			Transforms: transforms,
 		},
 	)
 	if err != nil {

@@ -37,12 +37,14 @@ func main() {
 
 	service := app.New(repo, hasher, processor)
 
+	
 	httpHandler := httptransport.NewHandler(service)
 
 	server := &http.Server{
 		Addr:    ":8080",
-		Handler: httpHandler.Routes(),
+		Handler: httpHandler.Routes("./web"),
 	}
+
 
 	fmt.Println("HTTP server listening on :8080")
 

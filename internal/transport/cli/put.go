@@ -97,7 +97,7 @@ func Put(ctx context.Context, port app.ObjectPort, args []string) error {
 	transforms := make([]domain.Transform, 0, len(transformArgs))
 
 	for _, value := range transformArgs {
-		transform, err := parseTransform(value)
+		transform, err := domain.ParseTransform(value)
 		if err != nil {
 			return err
 		}
@@ -127,33 +127,4 @@ func Put(ctx context.Context, port app.ObjectPort, args []string) error {
 	fmt.Printf("Size:       %d bytes\n", resp.Object.Size)
 
 	return nil
-}
-
-func parseTransform(value string) (domain.Transform, error) {
-	value = strings.TrimSpace(value)
-
-	parts := strings.SplitN(value, "@", 2)
-
-	if len(parts) != 2 {
-		return domain.Transform{}, fmt.Errorf(
-			"invalid transform %q: expected name@version",
-			value,
-		)
-	}
-
-	name := strings.TrimSpace(parts[0])
-	version := strings.TrimSpace(parts[1])
-
-	if name == "" || version == "" {
-		return domain.Transform{}, fmt.Errorf(
-			"invalid transform %q: expected name@version",
-			value,
-		)
-	}
-
-	return domain.Transform{
-		Name:    name,
-		Version: version,
-		Params:  map[string]string{},
-	}, nil
 }
