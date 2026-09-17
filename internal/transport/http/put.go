@@ -48,6 +48,7 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
 		transforms = append(transforms, transform)
 	}
 
@@ -63,7 +64,7 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, err)
 		return
 	}
 

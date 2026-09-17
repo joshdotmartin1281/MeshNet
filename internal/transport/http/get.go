@@ -36,7 +36,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeError(w, err)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *Handler) getByHash(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeError(w, err)
 		return
 	}
 
