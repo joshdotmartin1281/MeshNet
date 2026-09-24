@@ -12,6 +12,9 @@ func (h *Handler) Routes(path string) http.Handler {
 	mux.HandleFunc("GET /objects", h.list)
 	mux.HandleFunc("GET /health", h.health)
 
+	mux.HandleFunc("GET /query/{name}", h.runQuery)
+	mux.HandleFunc("POST /query/{name}", h.mutateQuery)
+
 	mux.HandleFunc("DELETE /objects/{id}", h.delete)
 	mux.HandleFunc("DELETE /objects/hash/{hash}", h.deleteByHash)
 

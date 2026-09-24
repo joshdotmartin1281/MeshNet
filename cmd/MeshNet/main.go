@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	"MeshNet/internal/processors/text"
 	"MeshNet/internal/storage/sqlite"
 	httptransport "MeshNet/internal/transport/http"
+	"MeshNet/queries/tags"
 )
 
 func main() {
@@ -35,16 +37,22 @@ func main() {
 		encrypt.NewDecrypt(key),
 	)
 
-	service := app.New(repo, hasher, processor)
+	queries, err := app.NewQueries(context.Background(), repo,
+		tags.NewSearchByTag(),
+	)
+	if err != nil {
+		fmt.Println("query init error:", err)
+		return
+	}
 
-	
+	service := app.New(repo, hasher, processor, queries)
+
 	httpHandler := httptransport.NewHandler(service)
 
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: httpHandler.Routes("./web"),
 	}
-
 
 	fmt.Println("HTTP server listening on :8080")
 

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"net/url"
 
 	"MeshNet/internal/api"
 )
@@ -21,5 +22,6 @@ type ObjectPort interface {
 }
 
 type RelationalPort interface {
-	any
+	RunQuery(ctx context.Context, name string, params url.Values) (any, error)
+	MutateQuery(ctx context.Context, name string, params url.Values) (any, error)
 }

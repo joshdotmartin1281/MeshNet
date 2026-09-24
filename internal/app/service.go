@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"time"
+	"net/url"
 
 	"MeshNet/internal/api"
 	"MeshNet/internal/domain"
@@ -14,13 +15,15 @@ type Service struct {
 	repo      storage.ObjectStore
 	hasher    domain.Hasher
 	processor *Processor
+	queries   *Queries
 }
 
-func New(repo storage.ObjectStore, hasher domain.Hasher, processor *Processor) *Service {
+func New(repo storage.ObjectStore, hasher domain.Hasher, processor *Processor, queries *Queries) *Service {
 	return &Service{
 		repo:      repo,
 		hasher:    hasher,
 		processor: processor,
+		queries:   queries,
 	}
 }
 
@@ -142,4 +145,12 @@ func (s *Service) DeleteByHash(ctx context.Context, req api.DeleteByHashRequest)
 	}
 
 	return api.DeleteByHashResponse{}, nil
+}
+
+func (s *Service) RunQuery(ctx context.Context, name string, params url.Values) (any, error) {
+	return s.queries.Run(ctx, name, params)
+}
+
+func (s *Service) MutateQuery(ctx context.Context, name string, params url.Values) (any, error) {
+	return s.queries.Mutate(ctx, name, params)
 }
