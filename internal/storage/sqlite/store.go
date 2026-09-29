@@ -12,6 +12,8 @@ import (
 
 	"MeshNet/internal/domain"
 	"MeshNet/internal/storage"
+	"MeshNet/query"
+	"MeshNet/transform"
 
 	_ "modernc.org/sqlite"
 )
@@ -21,7 +23,7 @@ type Store struct {
 }
 
 var _ storage.ObjectStore = (*Store)(nil)
-var _ storage.RelationalStore = (*Store)(nil)
+var _ query.RelationalStore = (*Store)(nil)
 
 func New(path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -475,8 +477,8 @@ func decodeSource(data []byte) (domain.Source, error) {
 	return source, nil
 }
 
-func decodeTransforms(data []byte) ([]domain.Transform, error) {
-	var transforms []domain.Transform
+func decodeTransforms(data []byte) ([]transform.Transform, error) {
+	var transforms []transform.Transform
 
 	if err := json.Unmarshal(data, &transforms); err != nil {
 		return nil, err

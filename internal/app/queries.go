@@ -5,27 +5,27 @@ import (
 	"fmt"
 	"net/url"
 
-	"MeshNet/internal/storage"
+	"MeshNet/query"
 )
 
 type Queries struct {
-	store   storage.RelationalStore
-	queries map[string]storage.Query
+	store   query.RelationalStore
+	queries map[string]query.Query
 }
 
-func NewQueries(ctx context.Context, store storage.RelationalStore, queries ...storage.Query) (*Queries, error) {
-	registry := make(map[string]storage.Query)
+func NewQueries(ctx context.Context, store query.RelationalStore, queries ...query.Query) (*Queries, error) {
+	registry := make(map[string]query.Query)
 
-	for _, query := range queries {
-		if err := query.Init(ctx, store); err != nil {
-			return nil, fmt.Errorf("init query %s: %w", query.Name(), err)
+	for _, qr := range queries {
+		if err := qr.Init(ctx, store); err != nil {
+			return nil, fmt.Errorf("init query %s: %w", qr.Name(), err)
 		}
 
-		if _, exists := registry[query.Name()]; exists {
-			return nil, fmt.Errorf("duplicate query name: %s", query.Name())
+		if _, exists := registry[qr.Name()]; exists {
+			return nil, fmt.Errorf("duplicate query name: %s", qr.Name())
 		}
 
-		registry[query.Name()] = query
+		registry[qr.Name()] = qr
 	}
 
 	return &Queries{
@@ -35,21 +35,21 @@ func NewQueries(ctx context.Context, store storage.RelationalStore, queries ...s
 }
 
 func (q *Queries) Run(ctx context.Context, name string, params url.Values) (any, error) {
-	query, ok := q.queries[name]
+	qr, ok := q.queries[name]
 	if !ok {
 		return nil, fmt.Errorf("query not found: %s", name)
 	}
 
-	return query.Run(ctx, q.store, params)
+	return qr.Run(ctx, q.store, params)
 }
 
 func (q *Queries) Mutate(ctx context.Context, name string, params url.Values) (any, error) {
-	query, ok := q.queries[name]
+	qr, ok := q.queries[name]
 	if !ok {
 		return nil, fmt.Errorf("query not found: %s", name)
 	}
 
-	mutable, ok := query.(storage.MutableQuery)
+	mutable, ok := qr.(query.MutableQuery)
 	if !ok {
 		return nil, fmt.Errorf("query %s does not support write operations", name)
 	}

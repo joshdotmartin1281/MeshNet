@@ -1,8 +1,9 @@
-package storage
+package query
 
 import (
 	"context"
 	"database/sql"
+	"net/url"
 )
 
 type RelationalStore interface {
@@ -23,4 +24,15 @@ type RelationalStore interface {
 		query string,
 		args ...any,
 	) *sql.Row
+}
+
+type Query interface {
+	Name() string
+	Init(ctx context.Context, store RelationalStore) error
+	Run(ctx context.Context, store RelationalStore, params url.Values) (any, error)
+}
+
+type MutableQuery interface {
+	Query
+	Mutate(ctx context.Context, store RelationalStore, params url.Values) (any, error)
 }

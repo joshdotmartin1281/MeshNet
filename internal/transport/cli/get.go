@@ -9,7 +9,7 @@ import (
 
 	"MeshNet/internal/api"
 	"MeshNet/internal/app"
-	"MeshNet/internal/domain"
+	"MeshNet/transform"
 )
 
 func Get(ctx context.Context, port app.ObjectPort, args []string) error {
@@ -41,10 +41,10 @@ func Get(ctx context.Context, port app.ObjectPort, args []string) error {
 		)
 	}
 
-	transforms := make([]domain.Transform, 0, len(transformArgs))
+	transforms := make([]transform.Transform, 0, len(transformArgs))
 
 	for _, value := range transformArgs {
-		transform, err := domain.ParseTransform(value)
+		transform, err := transform.ParseTransform(value)
 		if err != nil {
 			return err
 		}
@@ -101,10 +101,10 @@ func GetByHash(ctx context.Context, port app.ObjectPort, args []string) error {
 		)
 	}
 
-	transforms := make([]domain.Transform, 0, len(transformArgs))
+	transforms := make([]transform.Transform, 0, len(transformArgs))
 
 	for _, value := range transformArgs {
-		transform, err := domain.ParseTransform(value)
+		transform, err := transform.ParseTransform(value)
 		if err != nil {
 			return err
 		}

@@ -7,6 +7,7 @@ import (
 
 	"MeshNet/internal/api"
 	"MeshNet/internal/domain"
+	"MeshNet/transform"
 )
 
 func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
@@ -40,10 +41,10 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 		mediaType = http.DetectContentType(data)
 	}
 
-	transforms := make([]domain.Transform, 0, len(query["transform"]))
+	transforms := make([]transform.Transform, 0, len(query["transform"]))
 
 	for _, value := range query["transform"] {
-		transform, err := domain.ParseTransform(value)
+		transform, err := transform.ParseTransform(value)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

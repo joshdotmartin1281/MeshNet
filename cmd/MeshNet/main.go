@@ -7,8 +7,8 @@ import (
 
 	"MeshNet/internal/app"
 	"MeshNet/internal/hash"
-	"MeshNet/internal/processors/encrypt"
-	"MeshNet/internal/processors/text"
+	"MeshNet/processors/encrypt"
+	"MeshNet/processors/text"
 	"MeshNet/internal/storage/sqlite"
 	httptransport "MeshNet/internal/transport/http"
 	"MeshNet/queries/tags"

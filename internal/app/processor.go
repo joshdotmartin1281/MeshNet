@@ -3,15 +3,15 @@ package app
 import (
 	"fmt"
 
-	"MeshNet/internal/domain"
+	"MeshNet/transform"
 )
 
 type Processor struct {
-	processors map[string]domain.Processor
+	processors map[string]transform.Processor
 }
 
-func NewProcessor(processors ...domain.Processor) *Processor {
-	registry := make(map[string]domain.Processor)
+func NewProcessor(processors ...transform.Processor) *Processor {
+	registry := make(map[string]transform.Processor)
 
 	for _, processor := range processors {
 		key := processor.Name() + "@" + processor.Version()
@@ -24,7 +24,7 @@ func NewProcessor(processors ...domain.Processor) *Processor {
 	}
 }
 
-func (p *Processor) Process(data []byte, transforms []domain.Transform) ([]byte, error) {
+func (p *Processor) Process(data []byte, transforms []transform.Transform) ([]byte, error) {
 	result := data
 
 	for _, transform := range transforms {

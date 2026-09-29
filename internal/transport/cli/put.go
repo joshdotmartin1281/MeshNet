@@ -14,6 +14,7 @@ import (
 	"MeshNet/internal/api"
 	"MeshNet/internal/app"
 	"MeshNet/internal/domain"
+	"MeshNet/transform"
 )
 
 func Put(ctx context.Context, port app.ObjectPort, args []string) error {
@@ -94,10 +95,10 @@ func Put(ctx context.Context, port app.ObjectPort, args []string) error {
 		mediaType = http.DetectContentType(data)
 	}
 
-	transforms := make([]domain.Transform, 0, len(transformArgs))
+	transforms := make([]transform.Transform, 0, len(transformArgs))
 
 	for _, value := range transformArgs {
-		transform, err := domain.ParseTransform(value)
+		transform, err := transform.ParseTransform(value)
 		if err != nil {
 			return err
 		}

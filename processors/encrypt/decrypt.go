@@ -3,7 +3,7 @@ package encrypt
 import (
 	"fmt"
 
-	"MeshNet/internal/domain"
+	"MeshNet/transform"
 )
 
 type Decrypt struct {
@@ -22,7 +22,7 @@ func (Decrypt) Version() string {
 	return "1"
 }
 
-func (d Decrypt) Process(data []byte, transform domain.Transform) ([]byte, error) {
+func (d Decrypt) Process(data []byte, transform transform.Transform) ([]byte, error) {
 	if transform.Key() != "decrypt@1" {
 		return nil, fmt.Errorf(
 			"unsupported transform: %s",

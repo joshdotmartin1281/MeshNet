@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"MeshNet/internal/domain"
+	"MeshNet/transform"
 )
 
 type Encrypt struct {
@@ -24,7 +24,7 @@ func (Encrypt) Version() string {
 	return "1"
 }
 
-func (e Encrypt) Process(data []byte, transform domain.Transform) ([]byte, error) {
+func (e Encrypt) Process(data []byte, transform transform.Transform) ([]byte, error) {
 	if transform.Key() != "encrypt@1" {
 		return nil, fmt.Errorf(
 			"unsupported transform: %s",

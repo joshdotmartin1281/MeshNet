@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"MeshNet/transform"
+)
 
 type Object struct {
 	ID         string
@@ -11,7 +15,7 @@ type Object struct {
 	Size       int64
 	Source     Source
 	CreatedAt  time.Time
-	Transforms []Transform
+	Transforms []transform.Transform
 }
 
 type Payload struct {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"MeshNet/internal/domain"
+	"MeshNet/transform"
 )
 
 type PutRequest struct {
@@ -10,19 +11,19 @@ type PutRequest struct {
 	Name       string
 	MediaType  string
 	Data       []byte
-	Transforms []domain.Transform
+	Transforms []transform.Transform
 }
 
 type GetRequest struct {
 	ID         string
 	Collection string
-	Transforms []domain.Transform
+	Transforms []transform.Transform
 }
 
 type GetByHashRequest struct {
 	Hash       string
 	Collection string
-	Transforms []domain.Transform
+	Transforms []transform.Transform
 }
 
 type ListRequest struct {

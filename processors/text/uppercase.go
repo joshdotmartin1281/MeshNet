@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"MeshNet/internal/domain"
+	"MeshNet/transform"
 )
 
 type Uppercase struct{}
@@ -21,7 +21,7 @@ func (Uppercase) Version() string {
 	return "1"
 }
 
-func (Uppercase) Process(data []byte, transform domain.Transform) ([]byte, error) {
+func (Uppercase) Process(data []byte, transform transform.Transform) ([]byte, error) {
 	if transform.Key() != "uppercase@1" {
 		return nil, fmt.Errorf(
 			"unsupported transform: %s",
