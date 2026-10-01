@@ -24,6 +24,10 @@ func Run(ctx context.Context, port app.Port, args []string) error {
 		return DeleteByHash(ctx, port, args[1:])
 	case "get-by-hash":
 		return GetByHash(ctx, port, args[1:])
+	case "query":
+		return Query(ctx, port, args[1:])
+	case "mutate-query":
+		return MutateQuery(ctx, port, args[1:])
 	default:
 		return ErrUnknownCommand
 	}

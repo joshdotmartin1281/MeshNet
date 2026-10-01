@@ -4,13 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	"MeshNet/internal/app"
 	"MeshNet/internal/hash"
+	"MeshNet/internal/storage/sqlite"
+	"MeshNet/internal/transport/cli"
+	httptransport "MeshNet/internal/transport/http"
 	"MeshNet/processors/encrypt"
 	"MeshNet/processors/text"
-	"MeshNet/internal/storage/sqlite"
-	httptransport "MeshNet/internal/transport/http"
 	"MeshNet/queries/tags"
 )
 
@@ -54,10 +56,17 @@ func main() {
 		Handler: httpHandler.Routes("./web"),
 	}
 
-	fmt.Println("HTTP server listening on :8080")
+	go func() {
+		fmt.Println("HTTP server listening on :8080")
 
-	if err := server.ListenAndServe(); err != nil {
-		fmt.Println("HTTP server error:", err)
-		return
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Println("HTTP server error:", err)
+		}
+	}()
+
+	if err := cli.Shell(context.Background(), service, os.Stdin, os.Stdout); err != nil {
+		fmt.Println("shell error:", err)
 	}
+
+	_ = server.Shutdown(context.Background())
 }

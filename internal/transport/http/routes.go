@@ -18,7 +18,7 @@ func (h *Handler) Routes(path string) http.Handler {
 	mux.HandleFunc("DELETE /objects/{id}", h.delete)
 	mux.HandleFunc("DELETE /objects/hash/{hash}", h.deleteByHash)
 
-	mux.Handle("/", http.FileServer(http.Dir(path)))	
+	mux.Handle("/", http.FileServer(http.Dir(path)))
 
 	return mux
 }
