@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"MeshNet/cmd/example0/tags"
 	"MeshNet/internal/app"
 	"MeshNet/internal/hash"
 	"MeshNet/internal/storage/sqlite"
@@ -13,7 +14,8 @@ import (
 	httptransport "MeshNet/internal/transport/http"
 	"MeshNet/processors/encrypt"
 	"MeshNet/processors/text"
-	"MeshNet/cmd/example0/tags"
+	"MeshNet/uauth"
+	authfile "MeshNet/uauth/file"
 )
 
 func main() {
@@ -46,8 +48,13 @@ func main() {
 		fmt.Println("query init error:", err)
 		return
 	}
+	authStore, err := authfile.New("./auth/users.json")
+	if err != nil {
+		fmt.Println("auth init error:", err)
+		return
+	}
 
-	service := app.New(repo, hasher, processor, queries)
+	service := app.New(repo, hasher, processor, queries, app.WithAuth(authStore))
 
 	httpHandler := httptransport.NewHandler(service)
 
@@ -63,11 +70,11 @@ func main() {
 			fmt.Println("HTTP server error:", err)
 		}
 	}()
+	operatorCtx := auth.WithIdentity(context.Background(), auth.Operator)
 
-	if err := cli.Shell(context.Background(), service, os.Stdin, os.Stdout); err != nil {
+	if err := cli.Shell(operatorCtx, service, os.Stdin, os.Stdout); err != nil {
 		fmt.Println("shell error:", err)
 	}
 
 	_ = server.Shutdown(context.Background())
 }
-

@@ -9,6 +9,7 @@ import (
 	"MeshNet/internal/api"
 	"MeshNet/internal/domain"
 	"MeshNet/internal/storage"
+	"MeshNet/uauth"
 )
 
 type Service struct {
@@ -16,15 +17,78 @@ type Service struct {
 	hasher    domain.Hasher
 	processor *Processor
 	queries   *Queries
+	auth      auth.Provider
+	manager   auth.Manager
 }
 
-func New(repo storage.ObjectStore, hasher domain.Hasher, processor *Processor, queries *Queries) *Service {
-	return &Service{
+type Option func(*Service)
+
+func WithAuth(p auth.Provider) Option {
+	return func(s *Service) {
+		s.auth = p
+
+		if m, ok := p.(auth.Manager); ok {
+			s.manager = m
+		}
+	}
+}
+
+func New(repo storage.ObjectStore, hasher domain.Hasher, processor *Processor, queries *Queries, opts ...Option) *Service {
+	s := &Service{
 		repo:      repo,
 		hasher:    hasher,
 		processor: processor,
 		queries:   queries,
 	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
+}
+
+func (s *Service) AuthEnabled() bool {
+	return s.auth != nil
+}
+
+func (s *Service) Authenticate(ctx context.Context, token string) (auth.Identity, error) {
+	if s.auth == nil {
+		return auth.Identity{}, auth.ErrNotSupported
+	}
+
+	id, err := s.auth.Authenticate(ctx, token)
+	if err != nil {
+		return auth.Identity{}, err
+	}
+
+	id.Admin = false
+
+	return id, nil
+}
+
+func (s *Service) authorize(ctx context.Context, collection string, level auth.Level) error {
+	if s.auth == nil {
+		return nil
+	}
+
+	if id, ok := auth.FromContext(ctx); ok && id.Admin {
+		return nil
+	}
+
+	return s.auth.Authorize(ctx, collection, level)
+}
+
+func (s *Service) admin(ctx context.Context) (auth.Manager, error) {
+	if s.manager == nil {
+		return nil, auth.ErrNotSupported
+	}
+
+	if id, ok := auth.FromContext(ctx); !ok || !id.Admin {
+		return nil, auth.ErrForbidden
+	}
+
+	return s.manager, nil
 }
 
 func (s *Service) Put(ctx context.Context, req api.PutRequest) (api.PutResponse, error) {
@@ -153,4 +217,58 @@ func (s *Service) RunQuery(ctx context.Context, name string, params url.Values) 
 
 func (s *Service) MutateQuery(ctx context.Context, name string, params url.Values) (any, error) {
 	return s.queries.Mutate(ctx, name, params)
+}
+
+func (s *Service) CreateUser(ctx context.Context, name string) (auth.User, error) {
+	m, err := s.admin(ctx)
+	if err != nil {
+		return auth.User{}, err
+	}
+
+	return m.CreateUser(ctx, name)
+}
+
+func (s *Service) ListUsers(ctx context.Context) ([]auth.User, error) {
+	m, err := s.admin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.ListUsers(ctx)
+}
+
+func (s *Service) IssueToken(ctx context.Context, user string) (string, error) {
+	m, err := s.admin(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return m.IssueToken(ctx, user)
+}
+
+func (s *Service) RevokeTokens(ctx context.Context, user string) error {
+	m, err := s.admin(ctx)
+	if err != nil {
+		return err
+	}
+
+	return m.RevokeTokens(ctx, user)
+}
+
+func (s *Service) Grant(ctx context.Context, user, collection string, level auth.Level) error {
+	m, err := s.admin(ctx)
+	if err != nil {
+		return err
+	}
+
+	return m.Grant(ctx, user, collection, level)
+}
+
+func (s *Service) Ungrant(ctx context.Context, user, collection string) error {
+	m, err := s.admin(ctx)
+	if err != nil {
+		return err
+	}
+
+	return m.Ungrant(ctx, user, collection)
 }

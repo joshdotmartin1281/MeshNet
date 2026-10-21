@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<input type="password" id="token" placeholder="Access token" style="margin-top: 0; margin-bottom: 1rem;">
 <title>MeshNet</title>
 
 <script src="https://unpkg.com/htmx.org@2.0.6"></script>
@@ -184,6 +185,15 @@
     const tagsInput = document.getElementById("tags");
     const transform = document.getElementById("transform");
     const status = document.getElementById("status");
+    const tokenInput = document.getElementById("token");
+    tokenInput.value = sessionStorage.getItem("meshnet_token") || "";
+    tokenInput.addEventListener("change", () => {
+        sessionStorage.setItem("meshnet_token", tokenInput.value.trim());
+    });
+
+    function authHeaders(extra = {}) {
+        return { ...extra, Authorization: `Bearer ${tokenInput.value.trim()}` };
+    }
 
     const COLLECTION = "test";
 
@@ -206,13 +216,20 @@
     }
 
     async function addTag(objectID, tag) {
+        headers: authHeaders({ "Content-Type": "text/plain" }),
+
         const params = new URLSearchParams({
             object_id: objectID,
             tag: tag,
+            collection: COLLECTION,
+        });
+        const response = await fetch(`/query/tags?${params.toString()}`, {
+            method: "POST",
+            headers: authHeaders(),
         });
 
         const response = await fetch(`/query/tags?${params.toString()}`, {
-            method: "POST",
+            headers: authHeaders(),
         });
 
         if (!response.ok) {

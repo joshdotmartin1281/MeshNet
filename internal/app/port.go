@@ -5,11 +5,28 @@ import (
 	"net/url"
 
 	"MeshNet/internal/api"
+	"MeshNet/uauth"
 )
 
 type Port interface {
 	ObjectPort
 	RelationalPort
+	AuthPort
+	AdminPort
+}
+
+type AuthPort interface {
+	AuthEnabled() bool
+	Authenticate(ctx context.Context, token string) (auth.Identity, error)
+}
+
+type AdminPort interface {
+	CreateUser(ctx context.Context, name string) (auth.User, error)
+	ListUsers(ctx context.Context) ([]auth.User, error)
+	IssueToken(ctx context.Context, user string) (string, error)
+	RevokeTokens(ctx context.Context, user string) error
+	Grant(ctx context.Context, user, collection string, level auth.Level) error
+	Ungrant(ctx context.Context, user, collection string) error
 }
 
 type ObjectPort interface {

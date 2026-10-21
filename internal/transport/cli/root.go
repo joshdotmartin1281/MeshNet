@@ -28,6 +28,18 @@ func Run(ctx context.Context, port app.Port, args []string) error {
 		return Query(ctx, port, args[1:])
 	case "mutate-query":
 		return MutateQuery(ctx, port, args[1:])
+	case "user-create":
+		return UserCreate(ctx, port, args[1:])
+	case "user-list":
+		return UserList(ctx, port, args[1:])
+	case "token-create":
+		return TokenCreate(ctx, port, args[1:])
+	case "token-revoke":
+		return TokenRevoke(ctx, port, args[1:])
+	case "grant":
+		return Grant(ctx, port, args[1:])
+	case "ungrant":
+		return Ungrant(ctx, port, args[1:])
 	default:
 		return ErrUnknownCommand
 	}
